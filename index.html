@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>QEA Local Stories — Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="stories.css">
+<style>
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fff;
+    color: #12302b;
+  }
+  .page { max-width: 1240px; margin: 0 auto; padding: 28px 24px 60px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  p.note { color: #4a5f5a; font-size: 14px; margin: 0 0 24px; max-width: 70ch; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>QEA Local Stories</h1>
+  <p class="note">
+    Local development harness. The hidden block at the bottom of this file stands in for
+    the Webflow CMS Collection List — in Webflow that block is a real Collection List bound
+    to the Local Stories collection and set to “Hide”. See README.md.
+  </p>
+
+  <!-- The component renders itself into this one element. -->
+  <div id="qea-stories-map"></div>
+</div>
+
+<!-- ================================================================
+     STAND-IN for the hidden Webflow Collection List.
+
+     PLACEHOLDER CONTENT. The story names are the real ones named in
+     the brief, but the descriptions, coordinates and rich-text bodies
+     are approximations written for development — they are NOT the
+     real QEA copy and must be replaced by the live CMS data.
+
+     Structure mirrors exactly what Webflow will output:
+       - short scalar fields  -> data-* custom attributes
+       - rich text + images   -> child elements (Webflow cannot bind
+                                 those field types to a custom attribute)
+     ================================================================ -->
+<div id="qea-stories-data" style="display:none" aria-hidden="true">
+
+  <div class="qea-story-item"
+       data-title="Angela in Frankton"
+       data-slug="angela-in-frankton"
+       data-type="Households"
+       data-technologies="Solar, Batteries, Hot Water"
+       data-location="Frankton, Queenstown"
+       data-lat="-45.0195" data-lng="168.7377"
+       data-summary="Swapped gas hot water for a heat pump and added rooftop solar, cutting power bills by about a third.">
+    <img data-image="featured" src="https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&q=70" alt="">
+    <div data-field="glance"><ul><li>4.5 kW rooftop solar</li><li>Heat pump hot water</li><li>~35% lower power bill</li></ul></div>
+    <div data-field="journey"><p>Angela started with the hot water cylinder, which was the single biggest draw in the house, then added solar once she could see the savings arriving.</p></div>
+    <div data-field="support"><p>QEA connected Angela with a vetted local installer and helped her read the quotes side by side.</p></div>
+    <div data-field="quote"><p>“I didn’t expect it to be this straightforward. The hardest part was deciding to start.”</p></div>
+    <div data-field="find-out-more"><p><a href="https://www.qea.nz/local-stories">Read Angela’s full story</a></p></div>
+  </div>
+
+  <div class="qea-story-item"
+       data-title="Ziptrek Ecotours"
+       data-slug="ziptrek"
+       data-type="Businesses"
+       data-technologies="Solar, EV, Electric Vehicles"
+       data-location="Skyline, Queenstown"
+       data-lat="-45.0302" data-lng="168.6543"
+       data-summary="An adventure tourism operator running its shuttle fleet on electricity and generating its own power on site.">
+    <img data-image="featured" src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=70" alt="">
+    <div data-field="glance"><ul><li>Electric shuttle fleet</li><li>On-site solar generation</li><li>Zero-carbon tour operation</li></ul></div>
+    <div data-field="journey"><p>Ziptrek electrified its transport first, where the fuel savings were most visible, then moved to on-site generation.</p></div>
+    <div data-field="support"><p>QEA helped model the payback on the fleet transition and introduced the team to other operators who had already made the switch.</p></div>
+    <div data-field="quote"><p>“Going electric was the obvious move for a business built on the environment.”</p></div>
+  </div>
+
+  <div class="qea-story-item"
+       data-title="Headwaters Eco Lodge"
+       data-slug="headwaters-eco-lodge"
+       data-type="Businesses"
+       data-technologies="Solar, Batteries, Heating"
+       data-location="Glenorchy"
+       data-lat="-44.8536" data-lng="168.3836"
+       data-summary="An off-grid-capable lodge combining solar, battery storage and efficient heating at the head of the lake.">
+    <img data-image="featured" src="https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=600&q=70" alt="">
+    <div data-field="glance"><ul><li>Solar array with battery storage</li><li>Heat pump space heating</li><li>Resilient through outages</li></ul></div>
+    <div data-field="journey"><p>Built to run lean from the outset, the lodge added storage so it could ride through the outages that regularly affect the Glenorchy line.</p></div>
+    <div data-field="support"><p>QEA shared resilience planning guidance and connected the lodge to the wider network of local operators.</p></div>
+  </div>
+
+  <div class="qea-story-item"
+       data-title="Queenstown Golf Club"
+       data-slug="queenstown-golf-club"
+       data-type="Businesses"
+       data-technologies="Solar, Commercial Kitchen, Cooking"
+       data-location="Kelvin Heights, Queenstown"
+       data-lat="-45.0448" data-lng="168.6875"
+       data-summary="Clubhouse kitchen moved off gas to induction, paired with a rooftop solar array.">
+    <img data-image="featured" src="https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=600&q=70" alt="">
+    <div data-field="glance"><ul><li>Induction commercial kitchen</li><li>Rooftop solar</li><li>Gas connection removed</li></ul></div>
+    <div data-field="journey"><p>The kitchen upgrade was timed with a planned refurbishment, which made the switch from gas to induction close to cost-neutral.</p></div>
+    <div data-field="support"><p>QEA put the club in touch with suppliers offering the alliance’s negotiated pricing.</p></div>
+    <div data-field="quote"><p>“The chefs were sceptical for about a week. Now they won’t go back.”</p></div>
+  </div>
+
+  <div class="qea-story-item"
+       data-title="Milford Infrastructure"
+       data-slug="milford-infrastructure"
+       data-type="Community"
+       data-technologies="Solar, Batteries"
+       data-location="Milford Sound / Piopiotahi"
+       data-lat="-44.6714" data-lng="167.9256"
+       data-summary="Community-scale generation and storage supporting one of the most remote visitor destinations in the country.">
+    <img data-image="featured" src="https://images.unsplash.com/photo-1507699622108-4be3abd695ad?w=600&q=70" alt="">
+    <div data-field="glance"><ul><li>Community-scale solar</li><li>Battery storage for outage resilience</li><li>Reduced diesel dependence</li></ul></div>
+    <div data-field="journey"><p>Remote sites pay the highest price for diesel and suffer the longest outages, which makes local generation and storage unusually good value here.</p></div>
+    <div data-field="support"><p>QEA contributed to the feasibility work and helped bring the operators together.</p></div>
+  </div>
+
+  <!-- Deliberately has no coordinates: exercises the "story with no
+       location" path — it must still appear in the list, with no marker,
+       and must not plot at 0,0 in the Atlantic. -->
+  <div class="qea-story-item"
+       data-title="Wakatipu High School"
+       data-slug="wakatipu-high-school"
+       data-type="Community"
+       data-technologies="Solar, Solar for Renters"
+       data-location="Frankton, Queenstown"
+       data-lat="" data-lng=""
+       data-summary="A student-led push to get solar onto the school roof, still working through consenting.">
+    <div data-field="journey"><p>Coordinates not yet recorded in the CMS — this item is here to prove the list still renders it.</p></div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="stories.js"></script>
+<script>
+  initQeaStoriesMap({
+    cooperativeGestures: false
+  });
+</script>
+</body>
+</html>

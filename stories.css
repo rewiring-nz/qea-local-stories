@@ -1,0 +1,372 @@
+/* QEA Local Stories — component styles.
+   ---------------------------------------------------------------
+   Every colour, radius and font lives in the custom properties
+   below. To match the QEA site exactly, retune this one block; no
+   rule further down hardcodes a brand colour. */
+
+.qea-root {
+  /* --- brand palette (retune these) --- */
+  --qea-ink: #12302b;
+  --qea-ink-soft: #4a5f5a;
+  --qea-accent: #1d6b5a;
+  --qea-accent-dark: #12503f;
+  --qea-accent-tint: #e7f2ee;
+  --qea-surface: #ffffff;
+  --qea-surface-alt: #f5f7f6;
+  --qea-border: #dfe5e3;
+  --qea-focus: #b8541f;
+
+  /* --- type --- */
+  --qea-font: inherit;
+  --qea-size-base: 15px;
+  --qea-size-small: 13px;
+
+  /* --- shape & rhythm --- */
+  --qea-radius: 8px;
+  --qea-gap: 20px;
+
+  /* --- layout --- */
+  --qea-map-width: 62%;
+  --qea-map-min-height: 560px;
+  --qea-map-height-mobile: 340px;
+
+  font-family: var(--qea-font);
+  font-size: var(--qea-size-base);
+  color: var(--qea-ink);
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.qea-root *,
+.qea-root *::before,
+.qea-root *::after { box-sizing: inherit; }
+
+/* ============================= layout ============================= */
+
+.qea-layout {
+  display: flex;
+  align-items: stretch;
+  gap: var(--qea-gap);
+  width: 100%;
+  /* Prevents the flex children from forcing the page wider than the
+     viewport when a long story title can't wrap. */
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.qea-mapcol {
+  flex: 0 0 var(--qea-map-width);
+  min-width: 0;
+  min-height: var(--qea-map-min-height);
+  border-radius: var(--qea-radius);
+  overflow: hidden;
+  background: var(--qea-surface-alt);
+}
+
+.qea-map { width: 100%; height: 100%; min-height: inherit; }
+
+.qea-listcol {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: var(--qea-map-min-height);
+}
+
+/* ============================ filters ============================= */
+
+.qea-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--qea-border);
+}
+
+.qea-filters__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.qea-chip {
+  font: inherit;
+  font-size: var(--qea-size-small);
+  padding: 5px 12px;
+  border: 1px solid var(--qea-border);
+  border-radius: 999px;
+  background: var(--qea-surface);
+  color: var(--qea-ink-soft);
+  cursor: pointer;
+}
+.qea-chip:hover { border-color: var(--qea-accent); color: var(--qea-accent); }
+
+/* Selected filter carries weight + fill, not colour alone. */
+.qea-chip[aria-pressed="true"] {
+  background: var(--qea-accent);
+  border-color: var(--qea-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.qea-count {
+  font-size: var(--qea-size-small);
+  color: var(--qea-ink-soft);
+  margin: 10px 0 8px;
+}
+
+/* ========================== the story list ======================== */
+
+.qea-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  /* Keeps momentum scrolling inside the list on touch instead of
+     dragging the whole page. */
+  -webkit-overflow-scrolling: touch;
+}
+.qea-list > li { margin: 0 0 10px; }
+
+.qea-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  background: var(--qea-surface);
+  border: 1px solid var(--qea-border);
+  /* The left edge is the non-colour selection cue — transparent here,
+     solid when selected, so the card visibly shifts even in greyscale
+     or for a colour-blind visitor. */
+  border-left: 4px solid transparent;
+  border-radius: var(--qea-radius);
+  overflow: hidden;
+}
+.qea-card:hover { border-color: var(--qea-accent); }
+
+.qea-card.is-selected {
+  border-color: var(--qea-accent);
+  border-left-color: var(--qea-accent);
+  background: var(--qea-accent-tint);
+}
+.qea-card.is-selected .qea-card__title { font-weight: 700; }
+
+.qea-card__img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background: var(--qea-surface-alt);
+}
+
+.qea-card__body { padding: 12px 14px; }
+
+.qea-card__title {
+  margin: 0 0 2px;
+  font-size: var(--qea-size-base);
+  font-weight: 600;
+  color: var(--qea-ink);
+}
+
+.qea-card__loc,
+.qea-popup__loc {
+  margin: 0 0 8px;
+  font-size: var(--qea-size-small);
+  color: var(--qea-ink-soft);
+}
+
+.qea-card__summary {
+  margin: 8px 0 0;
+  font-size: var(--qea-size-small);
+  color: var(--qea-ink-soft);
+}
+
+.qea-card__pills { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.qea-pill {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.qea-pill--type { background: var(--qea-accent); color: #fff; }
+.qea-pill--tech {
+  background: var(--qea-accent-tint);
+  color: var(--qea-accent-dark);
+}
+
+.qea-empty {
+  font-size: var(--qea-size-small);
+  color: var(--qea-ink-soft);
+  padding: 8px 0;
+}
+
+/* ============================= markers ============================
+   NOTE: .qea-marker must never be given `position` of its own —
+   MapLibre applies an inline transform to this element and its own
+   positioning has to win. (Learned the hard way in the sibling
+   rewiring-nz maps.) */
+
+.qea-marker {
+  display: block;
+  width: 26px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+.qea-marker.is-hidden { display: none; }
+
+.qea-marker__pin {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+  background: var(--qea-accent);
+  border: 2.5px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Selected marker changes SIZE as well as colour, so the cue survives
+   greyscale. */
+.qea-marker.is-selected { width: 34px; height: 44px; z-index: 2; }
+.qea-marker.is-selected .qea-marker__pin {
+  width: 28px;
+  height: 28px;
+  background: var(--qea-focus);
+  border-width: 3px;
+}
+
+/* ============================== popup ============================= */
+
+.qea-popup .maplibregl-popup-content {
+  padding: 0;
+  border-radius: var(--qea-radius);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.qea-popup .maplibregl-popup-tip { border-top-color: var(--qea-surface); }
+
+.qea-popup__inner { position: relative; outline: none; }
+.qea-popup__inner:focus-visible { outline: 3px solid var(--qea-focus); }
+
+.qea-popup__scroll { max-height: 60vh; overflow-y: auto; }
+
+.qea-popup__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--qea-ink);
+  cursor: pointer;
+}
+.qea-popup__close:hover { background: #fff; }
+
+.qea-popup__img {
+  display: block;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background: var(--qea-surface-alt);
+}
+
+.qea-popup__body { padding: 14px 16px 16px; }
+
+.qea-popup__title {
+  margin: 0 0 2px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.qea-popup__summary {
+  margin: 8px 0 0;
+  font-size: var(--qea-size-small);
+  color: var(--qea-ink-soft);
+}
+
+.qea-detail__section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--qea-border);
+}
+
+.qea-detail__heading {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--qea-accent-dark);
+}
+
+.qea-detail__rich {
+  font-size: var(--qea-size-small);
+  color: var(--qea-ink);
+}
+.qea-detail__rich p { margin: 0 0 8px; }
+.qea-detail__rich p:last-child { margin-bottom: 0; }
+.qea-detail__rich img { max-width: 100%; height: auto; border-radius: 4px; }
+.qea-detail__rich a { color: var(--qea-accent-dark); }
+
+/* ========================= focus visibility =======================
+   A single consistent focus ring across every interactive element,
+   strong enough to see against both the white list and the map. */
+
+.qea-root :focus-visible,
+.qea-marker:focus-visible {
+  outline: 3px solid var(--qea-focus);
+  outline-offset: 2px;
+}
+
+/* ============================== mobile ============================ */
+
+@media (max-width: 800px) {
+  .qea-layout {
+    flex-direction: column;
+    gap: 16px;
+    overflow: visible;
+  }
+
+  .qea-mapcol {
+    flex: 0 0 auto;
+    width: 100%;
+    /* A fixed, sensible height on mobile — without this the flex item
+       either collapses to nothing or grows absurdly tall. */
+    height: var(--qea-map-height-mobile);
+    min-height: 0;
+  }
+
+  .qea-listcol {
+    /* Released so the list grows down the page naturally instead of
+       becoming a second scroll region inside an already-scrolling
+       page — two nested scrollbars on a phone is miserable. */
+    max-height: none;
+  }
+
+  .qea-list {
+    overflow-y: visible;
+    max-height: none;
+  }
+
+  .qea-popup__scroll { max-height: 50vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qea-root * { animation: none !important; transition: none !important; }
+}

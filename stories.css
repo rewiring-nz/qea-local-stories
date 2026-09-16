@@ -77,9 +77,21 @@
 .qea-filters {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--qea-border);
+}
+
+.qea-filters__row { display: flex; align-items: baseline; gap: 10px; }
+
+.qea-filters__label {
+  flex: 0 0 auto;
+  width: 76px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--qea-ink-soft);
 }
 
 .qea-filters__group {
@@ -258,7 +270,12 @@
 .qea-popup__inner { position: relative; outline: none; }
 .qea-popup__inner:focus-visible { outline: 3px solid var(--qea-focus); }
 
-.qea-popup__scroll { max-height: 60vh; overflow-y: auto; }
+/* Sized against the map container, not the viewport — see the
+   popupMaxHeight() note in stories.js. */
+.qea-popup__scroll {
+  max-height: var(--qea-popup-max, 320px);
+  overflow-y: auto;
+}
 
 .qea-popup__close {
   position: absolute;
@@ -364,7 +381,9 @@
     max-height: none;
   }
 
-  .qea-popup__scroll { max-height: 50vh; }
+  .qea-filters__row { flex-direction: column; gap: 5px; }
+  .qea-filters__label { width: auto; }
+
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -47,7 +47,7 @@ accessibility, responsive behaviour — is complete and tested.
 | `embed.html` | Bare, iframe-ready page (embedding Option A). |
 | `webflow-embed.html` | **Generated** — CSS + JS inlined for a Webflow Embed (Option B). |
 | `gen_embed.sh` | Regenerates `webflow-embed.html`. Run after every edit. |
-| `tests/browser-test.js` | Playwright suite — 47 checks covering the brief's test list. |
+| `tests/browser-test.js` | Playwright suite — 49 checks covering the brief's test list. |
 
 `webflow-embed.html` is a build artifact. **Never hand-edit it** — change
 `stories.js` / `stories.css` and run `./gen_embed.sh`.
@@ -342,7 +342,7 @@ The suite drives a real Chromium browser. It needs MapLibre reachable —
 either from the CDN, or vendored locally as `.testvendor/` (see the top of
 the test file).
 
-### Results — 47 checks, all passing
+### Results — 49 checks, all passing
 
 | Area | Checks |
 |---|---|
@@ -354,10 +354,12 @@ the test file).
 | Deep links | `?story=` opens the right story; unknown slug degrades gracefully |
 | Keyboard / a11y | Enter selects, Escape closes, cards are buttons, `aria-pressed` on cards and chips, marker labels, hidden markers leave the tab order |
 | Responsive | desktop side-by-side, map 62% width, mobile stacked, mobile map height sane, no horizontal scroll, mobile selection works |
+| Popup fit | every story's popup renders fully inside the map container; the bounds-fit fallback never overrides a selection |
 | Robustness | re-init doesn't duplicate markers, no uncaught JS errors |
 
-Two genuine bugs were found and fixed by this suite, both in the exact
-category the brief asked to avoid:
+Four genuine bugs were found and fixed during testing — the first two by
+the suite, the second two by looking at screenshots of the rendered
+result. All four are in the exact category the brief asked to avoid:
 
 1. **Selection gated on `map.on('load')`.** With tiles unreachable the
    event never fired and the entire list went inert. Fixed by removing the
@@ -366,6 +368,21 @@ category the brief asked to avoid:
    `syncUrl()`, which stripped `?story=` from the address bar *before* the
    initialiser read it, so deep links never resolved. Fixed by capturing
    the parameter before the first paint.
+3. **Popups were clipped by the map.** A popup lives inside the map
+   container, and sizing it as `60vh` made it nearly as tall as the map
+   itself — over 400px of story content was cut off below the edge. Fixed
+   by sizing the popup against the map rather than the viewport, and
+   flying the camera so the marker lands with room for the popup above it
+   (horizontally too, since the popup is centred on its marker).
+4. **The bounds-fit fallback stole the camera.** `whenMapReady()` has a
+   3-second timeout so it can't hang on unreachable tiles — but that
+   timeout could fire *after* a visitor selected a story and yank the map
+   back to the overview. Fixed by making `fitToVisible()` stand down
+   whenever something is selected.
+
+Bugs 3 and 4 are a reminder that a green test suite is not the same as a
+correct component: both passed every behavioural assertion while being
+plainly wrong on screen.
 
 ### Not yet verified
 

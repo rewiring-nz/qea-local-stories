@@ -176,6 +176,43 @@ async function newPage(browser, url) {
   check('25 marker->marker swaps with popup already open', swapBad === 0, firstSwapBad || `${swapBad} mismatches`);
 
   // ---------------------------------------------------------------
+  console.log('\n[4b] Popup stays inside the map');
+  // A popup is clipped by the map container, so a tall story must not
+  // overflow it — otherwise most of the content is simply invisible.
+  let clipped = [], clipDetail = null;
+  for (const slug of slugs) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(80);
+    await page.click(`.qea-card[data-slug="${slug}"]`);
+    await page.waitForTimeout(2600); // flyTo must fully settle
+    const g = await page.evaluate(() => {
+      const pop = document.querySelector('.maplibregl-popup');
+      const map = document.querySelector('.qea-mapcol');
+      if (!pop || !map) return null;
+      const p = pop.getBoundingClientRect(), m = map.getBoundingClientRect();
+      return { over: p.top < m.top - 1 || p.bottom > m.bottom + 1,
+               top: Math.round(p.top - m.top), bottom: Math.round(m.bottom - p.bottom) };
+    });
+    if (!g || g.over) { clipped.push(slug); if (!clipDetail) clipDetail = `${slug}: ${JSON.stringify(g)}`; }
+  }
+  check('every story popup fits inside the map', clipped.length === 0, clipDetail);
+
+  // The bounds-fit has a timeout fallback for unreachable tiles; it must
+  // never fire after a selection and drag the camera off the chosen story.
+  await page.close();
+  page = await newPage(browser);
+  await page.click('.qea-card[data-slug="milford-infrastructure"]');
+  await page.waitForTimeout(4500); // outlive the 3s fitToVisible fallback
+  const held = await page.evaluate(() => {
+    const i = document.querySelector('#qea-stories-map').__qeaStoriesInstance;
+    const s = i.stories.find(x => x.slug === 'milford-infrastructure');
+    const c = i.map.getCenter();
+    return { dLng: Math.abs(c.lng - s.lng), dLat: Math.abs(c.lat - s.lat), zoom: i.map.getZoom() };
+  });
+  check('bounds-fit fallback does not override a selection',
+    held.zoom >= 12.5 && held.dLng < 0.3 && held.dLat < 0.3, JSON.stringify(held));
+
+  // ---------------------------------------------------------------
   console.log('\n[5] Filters');
   const chip = (group, value) => `.qea-filters__group[data-group="${group}"] .qea-chip[data-value="${value}"]`;
 

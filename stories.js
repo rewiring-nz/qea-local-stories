@@ -353,8 +353,14 @@
         '<div class="qea-mapcol"><div class="qea-map"></div></div>' +
         '<aside class="qea-listcol" aria-label="Local stories">' +
           '<div class="qea-filters">' +
-            '<div class="qea-filters__group" data-group="type" role="group" aria-label="Filter by type"></div>' +
-            '<div class="qea-filters__group" data-group="tech" role="group" aria-label="Filter by technology"></div>' +
+            '<div class="qea-filters__row">' +
+              '<span class="qea-filters__label" aria-hidden="true">Type</span>' +
+              '<div class="qea-filters__group" data-group="type" role="group" aria-label="Filter by type"></div>' +
+            "</div>" +
+            '<div class="qea-filters__row">' +
+              '<span class="qea-filters__label" aria-hidden="true">Technology</span>' +
+              '<div class="qea-filters__group" data-group="tech" role="group" aria-label="Filter by technology"></div>' +
+            "</div>" +
           "</div>" +
           '<p class="qea-count" role="status" aria-live="polite"></p>' +
           '<ul class="qea-list"></ul>' +
@@ -421,7 +427,12 @@
       closeOnClick: false,
       focusAfterOpen: false,
       maxWidth: "340px",
-      className: "qea-popup"
+      className: "qea-popup",
+      // Fixed anchor rather than MapLibre's automatic choice: the camera
+      // is positioned below to guarantee clearance, which only works if
+      // we know which way the popup opens.
+      anchor: "bottom",
+      offset: 34
     });
     popup.on("close", function () {
       if (applyingPopup) return; // our own content swap, not a real close
@@ -453,6 +464,25 @@
         .setLngLat([story.lng, story.lat])
         .addTo(map);
     });
+
+    /* ----------------- keeping the popup inside the map -------------
+       A popup sits inside the map container and is clipped by it, so its
+       height has to be measured against the MAP rather than the viewport
+       — 60vh of a tall page is easily taller than a 560px map, which
+       clips most of the story out of sight. This caps it to the map's own
+       height and leaves room for the pin and the tip.
+       --------------------------------------------------------------- */
+    function popupMaxHeight() {
+      var h = mapEl.getBoundingClientRect().height || opts.mapMinHeight || 560;
+      return Math.max(160, Math.round(h - 160));
+    }
+
+    function syncPopupMax() {
+      root.style.setProperty("--qea-popup-max", popupMaxHeight() + "px");
+    }
+
+    syncPopupMax();
+    window.addEventListener("resize", syncPopupMax);
 
     /* ------------------------ state & render ---------------------- */
     function setState(patch) {
@@ -601,9 +631,32 @@
       setState(patch);
 
       if (story.hasLocation) {
+        // Place the marker low enough in the frame that the popup, which
+        // opens upward, fits entirely inside the map. `offset` shifts
+        // where the target coordinate lands relative to the container
+        // centre, so this is one animation rather than a fly-then-pan.
+        var mapH = mapEl.getBoundingClientRect().height || 560;
+        var popEl = popup.getElement();
+        var popH = popEl ? popEl.offsetHeight : 0;
+        // popH is the content box; the rendered popup is taller once the
+        // tip and shadow are included, so budget ~86px of clearance
+        // rather than trusting offsetHeight alone.
+        var wantY = Math.min(mapH - 24, Math.max(mapH / 2, popH + 86));
+
+        // The popup is centred horizontally on the marker, so the marker
+        // needs at least half a popup-width of clearance from each edge.
+        var mapW = mapEl.getBoundingClientRect().width || 600;
+        var popW = popEl ? popEl.offsetWidth : 340;
+        var halfW = popW / 2 + 12;
+        var wantX = mapW / 2;
+        if (halfW * 2 < mapW) {
+          wantX = Math.min(mapW - halfW, Math.max(halfW, mapW / 2));
+        }
+
         map.flyTo({
           center: [story.lng, story.lat],
           zoom: Math.max(map.getZoom(), opts.selectedZoom),
+          offset: [Math.round(wantX - mapW / 2), Math.round(wantY - mapH / 2)],
           speed: 1.2,
           essential: true
         });
@@ -679,6 +732,10 @@
 
     function fitToVisible() {
       if (!opts.fitToStories) return;
+      // Never yank the camera away from a story the visitor has already
+      // chosen. whenMapReady() carries a timeout fallback, so this can
+      // otherwise fire seconds after a selection and undo its flyTo.
+      if (state.selectedId) return;
       var pts = visibleStories().filter(function (s) { return s.hasLocation; });
       if (pts.length < 2) return;
       var b = new maplibregl.LngLatBounds();

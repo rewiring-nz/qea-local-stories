@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<title>Iframe bridge fixture</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  #wrap { width: 100%; height: 700px; }
+  #qea-stories-frame { width: 100%; height: 100%; border: 0; display: block; }
+  #cms { display: none; }
+</style>
+</head>
+<body>
+
+<!-- Mirrors the shape of the real QEA page: short fields on
+     .cms-item[data-slug], rich text in separate slot="..." elements
+     that are NOT inside the item, emitted in the same document order. -->
+<div id="cms">
+  <div class="cms-item" data-slug="sasha-in-alexandra" data-name="Sasha in Alexandra"
+       data-type="Household" data-tech="Solar" data-lat="-45.249581" data-lng="169.38242"
+       data-blurb="Turned a $6,000 power bill into an investment."></div>
+  <div class="cms-item" data-slug="milford-infrastructure" data-name="Milford Infrastructure"
+       data-type="Business" data-tech="Batteries" data-lat="167.9192" data-lng="-44.6711"
+       data-blurb="Battery backup at the end of the road."></div>
+  <div class="cms-item" data-slug="queenstown-ice-arena" data-name="Queenstown Ice Arena"
+       data-type="Business " data-tech="solar " data-lat="-45.03736" data-lng="168.66193"
+       data-blurb="Rink plant on rooftop generation."></div>
+
+  <div data-props='{"name":"Local Stories","heroImage":{"src":"https://example.com/a.png"},"testimonialQuote":"Quote A","findOutMoreUrl":"https://example.com/a"}'></div>
+  <div class="w-richtext" slot="meet"><p>Meet A</p></div>
+  <div class="w-richtext" slot="glance"><ul><li>Glance A</li></ul></div>
+  <div class="w-richtext" slot="journey"><p>Journey A</p></div>
+  <div class="w-richtext" slot="support"><p>Support A</p></div>
+  <div class="w-richtext" slot="exploreMore"><p>Explore A</p></div>
+
+  <div data-props='{"name":"Local Stories","heroImage":{"src":"https://example.com/b.png"},"testimonialQuote":"Quote B","findOutMoreUrl":"https://example.com/b"}'></div>
+  <div class="w-richtext" slot="meet"><p>Meet B</p></div>
+  <div class="w-richtext" slot="glance"><ul><li>Glance B</li></ul></div>
+  <div class="w-richtext" slot="journey"><p>Journey B</p></div>
+  <div class="w-richtext" slot="support"><p>Support B</p></div>
+  <div class="w-richtext" slot="exploreMore"><p>Explore B</p></div>
+
+  <div data-props='{"name":"Local Stories","heroImage":{"src":"https://example.com/c.png"},"testimonialQuote":"Quote C","findOutMoreUrl":"https://example.com/c"}'></div>
+  <div class="w-richtext" slot="meet"><p>Meet C</p></div>
+  <div class="w-richtext" slot="glance"><ul><li>Glance C</li></ul></div>
+  <div class="w-richtext" slot="journey"><p>Journey C</p></div>
+  <div class="w-richtext" slot="support"><p>Support C</p></div>
+  <div class="w-richtext" slot="exploreMore"><p>Explore C</p></div>
+</div>
+
+<div id="wrap">
+  <iframe id="qea-stories-frame" src="../embed.html" title="QEA Local Stories map"></iframe>
+</div>
+
+<script>
+// Same bridge logic as webflow-iframe-embed.html, pointed at the local
+// copy. Kept in sync by tests/browser-test.js, which checks the two
+// agree on the fields they send.
+(function () {
+  var FRAME = document.getElementById("qea-stories-frame");
+  var TARGET = window.location.origin;
+  function text(el) { return el ? el.innerHTML.trim() : ""; }
+  function collect() {
+    var items = document.querySelectorAll(".cms-item[data-slug]");
+    if (!items.length) return [];
+    var slots = ["meet", "glance", "journey", "support", "exploreMore"];
+    var lists = {}, aligned = true;
+    slots.forEach(function (n) {
+      lists[n] = document.querySelectorAll('[slot="' + n + '"]');
+      if (lists[n].length !== items.length) aligned = false;
+    });
+    var propNodes = document.querySelectorAll("[data-props]");
+    var propsAligned = propNodes.length === items.length;
+    window.__qeaAligned = aligned;
+    return Array.prototype.map.call(items, function (el, i) {
+      var props = {};
+      if (propsAligned) { try { props = JSON.parse(propNodes[i].getAttribute("data-props")) || {}; } catch (e) { props = {}; } }
+      return {
+        name: el.getAttribute("data-name"), slug: el.getAttribute("data-slug"),
+        type: el.getAttribute("data-type"), technologies: el.getAttribute("data-tech"),
+        lat: el.getAttribute("data-lat"), lng: el.getAttribute("data-lng"),
+        summary: el.getAttribute("data-blurb"),
+        image: (props.heroImage && props.heroImage.src) || "",
+        quote: props.testimonialQuote || "", url: props.findOutMoreUrl || "",
+        glance: aligned ? text(lists.glance[i]) : "",
+        journey: aligned ? text(lists.journey[i]) : "",
+        support: aligned ? text(lists.support[i]) : "",
+        exploreMore: aligned ? text(lists.exploreMore[i]) : ""
+      };
+    });
+  }
+  function send() {
+    if (FRAME && FRAME.contentWindow) {
+      FRAME.contentWindow.postMessage({ type: "qea:data", stories: collect() }, TARGET);
+    }
+  }
+  window.__qeaLastStory = undefined;
+  window.addEventListener("message", function (ev) {
+    if (ev.origin !== TARGET) return;
+    if (ev.data && ev.data.type === "qea:ready") send();
+    if (ev.data && ev.data.type === "qea:story") window.__qeaLastStory = ev.data.story;
+  });
+  FRAME.addEventListener("load", function () { send(); setTimeout(send, 600); });
+})();
+</script>
+</body>
+</html>

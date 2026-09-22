@@ -25,9 +25,17 @@
   --qea-radius: 8px;
   --qea-gap: 20px;
 
-  /* --- layout --- */
+  /* --- layout ---
+     The component fills whatever box it is given: set the height on the
+     Embed (or its parent) in Webflow and everything below follows. No
+     code change needed to resize it.
+
+     --qea-min-height is only a floor for the case where NO ancestor
+     declares a height — `height: 100%` resolves to `auto` there, which
+     would otherwise collapse the map to nothing. Set it to 0 if you
+     want a short container to win outright. */
   --qea-map-width: 62%;
-  --qea-map-min-height: 560px;
+  --qea-min-height: 560px;
   --qea-map-height-mobile: 340px;
 
   font-family: var(--qea-font);
@@ -35,6 +43,14 @@
   color: var(--qea-ink);
   line-height: 1.5;
   box-sizing: border-box;
+
+  /* Fill the host box in both axes. See --qea-min-height above for the
+     auto-height fallback. */
+  width: 100%;
+  height: 100%;
+  min-height: var(--qea-min-height);
+  display: flex;
+  flex-direction: column;
 }
 .qea-root *,
 .qea-root *::before,
@@ -47,6 +63,11 @@
   align-items: stretch;
   gap: var(--qea-gap);
   width: 100%;
+  /* Takes the root's full height. min-height:0 lets the flex children
+     shrink below their content, which is what allows the list to scroll
+     internally rather than pushing the component taller than its box. */
+  flex: 1 1 auto;
+  min-height: 0;
   /* Prevents the flex children from forcing the page wider than the
      viewport when a long story title can't wrap. */
   max-width: 100%;
@@ -56,20 +77,20 @@
 .qea-mapcol {
   flex: 0 0 var(--qea-map-width);
   min-width: 0;
-  min-height: var(--qea-map-min-height);
+  min-height: 0;
   border-radius: var(--qea-radius);
   overflow: hidden;
   background: var(--qea-surface-alt);
 }
 
-.qea-map { width: 100%; height: 100%; min-height: inherit; }
+.qea-map { width: 100%; height: 100%; }
 
 .qea-listcol {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  max-height: var(--qea-map-min-height);
+  min-height: 0;
 }
 
 /* ============================ filters ============================= */
@@ -133,7 +154,15 @@
   margin: 0;
   padding: 0 4px 0 0;
   overflow-y: auto;
-  flex: 1 1 auto;
+  /* flex-basis 0, not auto: the cards must not contribute their own
+     height to the layout. With `auto` the list reports its full content
+     height, which in a container that has no height of its own pushes
+     the whole component (and the map beside it) to the height of every
+     card stacked up — 1769px for six stories. At 0 the list takes the
+     space left over and scrolls, and an auto-height host settles at
+     --qea-min-height instead. */
+  flex: 1 1 0;
+  min-height: 0;
   /* Keeps momentum scrolling inside the list on touch instead of
      dragging the whole page. */
   -webkit-overflow-scrolling: touch;
@@ -354,6 +383,21 @@
 /* ============================== mobile ============================ */
 
 @media (max-width: 800px) {
+  /* Stacked, the component stops filling its container and grows with
+     its content instead. This is deliberate, and it is the one place the
+     host's height is treated as a minimum rather than the box to fit.
+
+     The filter chips are why. At 375px they wrap to roughly 280px of
+     rows; with a 340px map above them, a 720px container leaves the
+     story list a 48px window — three cards' worth of content in a slot
+     too short for one. Every height a phone actually has is too short
+     for a fixed layout here, so the list runs down the page and the
+     page scrolls, which is what a phone is good at. */
+  .qea-root {
+    height: auto;
+    min-height: 0;
+  }
+
   .qea-layout {
     flex-direction: column;
     gap: 16px;
@@ -361,24 +405,26 @@
   }
 
   .qea-mapcol {
-    flex: 0 0 auto;
+    /* The map takes a fixed slice off the top and the list takes the
+       rest of the container, rather than the map being sized and the
+       list running on down the page. Accepts a percentage too, if you
+       would rather the split scaled with the container. */
+    flex: 0 0 var(--qea-map-height-mobile);
     width: 100%;
-    /* A fixed, sensible height on mobile — without this the flex item
-       either collapses to nothing or grows absurdly tall. */
-    height: var(--qea-map-height-mobile);
+    height: auto;
     min-height: 0;
   }
 
   .qea-listcol {
-    /* Released so the list grows down the page naturally instead of
-       becoming a second scroll region inside an already-scrolling
-       page — two nested scrollbars on a phone is miserable. */
-    max-height: none;
+    /* Grows with its content rather than scrolling inside a fixed
+       share — two nested scroll regions on a phone is miserable. */
+    flex: 0 0 auto;
+    min-height: 0;
   }
 
   .qea-list {
+    flex: 0 0 auto;
     overflow-y: visible;
-    max-height: none;
   }
 
   .qea-filters__row { flex-direction: column; gap: 5px; }

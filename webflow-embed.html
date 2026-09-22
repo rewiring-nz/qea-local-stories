@@ -39,9 +39,17 @@
     --qea-radius: 8px;
     --qea-gap: 20px;
   
-    /* --- layout --- */
+    /* --- layout ---
+       The component fills whatever box it is given: set the height on the
+       Embed (or its parent) in Webflow and everything below follows. No
+       code change needed to resize it.
+  
+       --qea-min-height is only a floor for the case where NO ancestor
+       declares a height — `height: 100%` resolves to `auto` there, which
+       would otherwise collapse the map to nothing. Set it to 0 if you
+       want a short container to win outright. */
     --qea-map-width: 62%;
-    --qea-map-min-height: 560px;
+    --qea-min-height: 560px;
     --qea-map-height-mobile: 340px;
   
     font-family: var(--qea-font);
@@ -49,6 +57,14 @@
     color: var(--qea-ink);
     line-height: 1.5;
     box-sizing: border-box;
+  
+    /* Fill the host box in both axes. See --qea-min-height above for the
+       auto-height fallback. */
+    width: 100%;
+    height: 100%;
+    min-height: var(--qea-min-height);
+    display: flex;
+    flex-direction: column;
   }
   .qea-root *,
   .qea-root *::before,
@@ -61,6 +77,11 @@
     align-items: stretch;
     gap: var(--qea-gap);
     width: 100%;
+    /* Takes the root's full height. min-height:0 lets the flex children
+       shrink below their content, which is what allows the list to scroll
+       internally rather than pushing the component taller than its box. */
+    flex: 1 1 auto;
+    min-height: 0;
     /* Prevents the flex children from forcing the page wider than the
        viewport when a long story title can't wrap. */
     max-width: 100%;
@@ -70,20 +91,20 @@
   .qea-mapcol {
     flex: 0 0 var(--qea-map-width);
     min-width: 0;
-    min-height: var(--qea-map-min-height);
+    min-height: 0;
     border-radius: var(--qea-radius);
     overflow: hidden;
     background: var(--qea-surface-alt);
   }
   
-  .qea-map { width: 100%; height: 100%; min-height: inherit; }
+  .qea-map { width: 100%; height: 100%; }
   
   .qea-listcol {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    max-height: var(--qea-map-min-height);
+    min-height: 0;
   }
   
   /* ============================ filters ============================= */
@@ -147,7 +168,15 @@
     margin: 0;
     padding: 0 4px 0 0;
     overflow-y: auto;
-    flex: 1 1 auto;
+    /* flex-basis 0, not auto: the cards must not contribute their own
+       height to the layout. With `auto` the list reports its full content
+       height, which in a container that has no height of its own pushes
+       the whole component (and the map beside it) to the height of every
+       card stacked up — 1769px for six stories. At 0 the list takes the
+       space left over and scrolls, and an auto-height host settles at
+       --qea-min-height instead. */
+    flex: 1 1 0;
+    min-height: 0;
     /* Keeps momentum scrolling inside the list on touch instead of
        dragging the whole page. */
     -webkit-overflow-scrolling: touch;
@@ -368,6 +397,21 @@
   /* ============================== mobile ============================ */
   
   @media (max-width: 800px) {
+    /* Stacked, the component stops filling its container and grows with
+       its content instead. This is deliberate, and it is the one place the
+       host's height is treated as a minimum rather than the box to fit.
+  
+       The filter chips are why. At 375px they wrap to roughly 280px of
+       rows; with a 340px map above them, a 720px container leaves the
+       story list a 48px window — three cards' worth of content in a slot
+       too short for one. Every height a phone actually has is too short
+       for a fixed layout here, so the list runs down the page and the
+       page scrolls, which is what a phone is good at. */
+    .qea-root {
+      height: auto;
+      min-height: 0;
+    }
+  
     .qea-layout {
       flex-direction: column;
       gap: 16px;
@@ -375,24 +419,26 @@
     }
   
     .qea-mapcol {
-      flex: 0 0 auto;
+      /* The map takes a fixed slice off the top and the list takes the
+         rest of the container, rather than the map being sized and the
+         list running on down the page. Accepts a percentage too, if you
+         would rather the split scaled with the container. */
+      flex: 0 0 var(--qea-map-height-mobile);
       width: 100%;
-      /* A fixed, sensible height on mobile — without this the flex item
-         either collapses to nothing or grows absurdly tall. */
-      height: var(--qea-map-height-mobile);
+      height: auto;
       min-height: 0;
     }
   
     .qea-listcol {
-      /* Released so the list grows down the page naturally instead of
-         becoming a second scroll region inside an already-scrolling
-         page — two nested scrollbars on a phone is miserable. */
-      max-height: none;
+      /* Grows with its content rather than scrolling inside a fixed
+         share — two nested scroll regions on a phone is miserable. */
+      flex: 0 0 auto;
+      min-height: 0;
     }
   
     .qea-list {
+      flex: 0 0 auto;
       overflow-y: visible;
-      max-height: none;
     }
   
     .qea-filters__row { flex-direction: column; gap: 5px; }
@@ -455,10 +501,14 @@
       // Preferred display order for filter chips. Any value found in the
       // CMS that isn't listed here is appended automatically, so the team
       // can add a new category without a code change.
-      typeOrder: ["Households", "Businesses", "Community"],
+      // Preferred chip order and spelling. Matches the labels the live
+      // QEA Local Stories page uses; the plural forms are kept so a
+      // Collection that names the option "Households" still sorts sensibly
+      // instead of falling through to the alphabetical tail.
+      typeOrder: ["Business", "Household", "Community", "Businesses", "Households"],
       techOrder: [
         "Solar", "Batteries", "EV", "Business", "Cooking", "Heating",
-        "Hot Water", "Commercial Kitchen", "Solar for Renters",
+        "Hot water", "Commercial Kitchen", "Community", "Solar for Renters",
         "Electric Vehicles"
       ]
     };
@@ -498,7 +548,12 @@
       return String(str || "")
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
+        // Escaped rather than written literally: webflow-embed.html carries
+        // no charset of its own, so anywhere it is served without one the
+        // raw combining-mark bytes get decoded as Latin-1 and this becomes
+        // an invalid range — which throws while the IIFE is still being
+        // defined and takes the whole component down. Keep this ASCII.
+        .replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "");
     }
@@ -524,6 +579,27 @@
         // as "no location" rather than plotting a marker off Africa.
         !(lat === 0 && lng === 0)
       );
+    }
+  
+    // A latitude outside ±90 is impossible, so a pair like
+    // (167.9192, -44.6711) can only be a transposed row — Webflow's
+    // Latitude and Longitude are two free number inputs and are easy to
+    // fill in the wrong order. Recover the point when the swap is the
+    // only reading that works, and warn so the CMS row still gets fixed
+    // at source rather than silently depending on this.
+    function resolveLatLng(lat, lng, label) {
+      if (isValidLatLng(lat, lng)) return { lat: lat, lng: lng };
+      if (isValidLatLng(lng, lat)) {
+        if (window.console && window.console.warn) {
+          window.console.warn(
+            '[qea-stories] Latitude/Longitude look transposed for "' + label +
+            '" (lat=' + lat + ", lng=" + lng + "). Plotting the swapped pair; " +
+            "correct the CMS row to silence this."
+          );
+        }
+        return { lat: lng, lng: lat };
+      }
+      return { lat: lat, lng: lng };
     }
   
     /* ========================= CMS DATA LAYER =========================
@@ -573,8 +649,9 @@
         }
         seen[slug] = true;
   
-        var lat = parseFloat(d.lat);
-        var lng = parseFloat(d.lng);
+        var point = resolveLatLng(parseFloat(d.lat), parseFloat(d.lng), title);
+        var lat = point.lat;
+        var lng = point.lng;
   
         // Technologies can arrive either as a comma-joined attribute or,
         // for a Webflow multi-reference, as nested elements.
@@ -583,7 +660,7 @@
           ? Array.prototype.map.call(techNodes, function (n) {
               return n.textContent.trim();
             }).filter(Boolean)
-          : splitList(d.technologies || d.technology);
+          : splitList(d.technologies || d.technology || d.tech);
   
         stories.push({
           slug: slug,
@@ -614,6 +691,58 @@
        shows up as a new chip with no code change. `order` just fixes the
        position of the values we already know about.
        ================================================================== */
+  
+    // Webflow lets the same tag be typed several ways across CMS rows —
+    // "solar" and "Solar", "Commercial kitchen" and "Commercial Kitchen".
+    // Left alone each spelling becomes its own chip, and picking one
+    // hides the stories that chose the other. Fold them onto one display
+    // spelling: the one from the preferred order if it matches
+    // case-insensitively, otherwise the first spelling the data uses.
+    //
+    // This normalises how a tag is *written*, not which tags exist — a
+    // category QEA invents tomorrow still appears on its own. Don't turn
+    // it into a lookup of permitted values.
+    function canonicaliser(values, order) {
+      var canon = Object.create(null);
+      function register(v) {
+        var k = v.toLowerCase();
+        if (!canon[k]) canon[k] = v;
+      }
+      order.forEach(register);
+      values.forEach(register);
+      return function (v) {
+        return v ? (canon[v.toLowerCase()] || v) : v;
+      };
+    }
+  
+    // Runs once, over every story, before anything derives a chip or a
+    // pill from the data — so the list, the filters and storyMatches()
+    // are all comparing the same strings.
+    function canonicaliseTags(stories, typeOrder, techOrder) {
+      var types = [];
+      var techs = [];
+      stories.forEach(function (s) {
+        if (s.type) types.push(s.type);
+        s.technologies.forEach(function (t) { techs.push(t); });
+      });
+  
+      var toType = canonicaliser(types, typeOrder);
+      var toTech = canonicaliser(techs, techOrder);
+  
+      stories.forEach(function (s) {
+        s.type = toType(s.type);
+        var seen = Object.create(null);
+        // A single row spelling one tag twice ("Solar, solar") collapses
+        // to one pill rather than rendering a duplicate.
+        s.technologies = s.technologies.map(toTech).filter(function (t) {
+          if (seen[t]) return false;
+          seen[t] = true;
+          return true;
+        });
+      });
+  
+      return stories;
+    }
   
     function collectValues(stories, pick, order) {
       var found = Object.create(null);
@@ -734,7 +863,9 @@
       // "sometimes the popup doesn't open" bug this component avoids.
       if (root.__qeaStoriesInstance) return root.__qeaStoriesInstance;
   
-      var stories = readStories(opts.listSelector);
+      var stories = canonicaliseTags(
+        readStories(opts.listSelector), opts.typeOrder, opts.techOrder
+      );
       var byId = Object.create(null);
       stories.forEach(function (s) { byId[s.slug] = s; });
   
@@ -883,7 +1014,7 @@
          height and leaves room for the pin and the tip.
          --------------------------------------------------------------- */
       function popupMaxHeight() {
-        var h = mapEl.getBoundingClientRect().height || opts.mapMinHeight || 560;
+        var h = mapEl.getBoundingClientRect().height || 560;
         return Math.max(160, Math.round(h - 160));
       }
   
@@ -893,6 +1024,20 @@
   
       syncPopupMax();
       window.addEventListener("resize", syncPopupMax);
+  
+      // The component is sized by its container, not by the window, so the
+      // box can change without a window resize ever firing — a Webflow
+      // breakpoint, a parent that grows, or someone editing the Embed's
+      // height in the Designer. Watch the element itself and tell MapLibre
+      // to re-measure, otherwise the canvas keeps its old dimensions and
+      // the map renders letterboxed inside its own container.
+      if (window.ResizeObserver) {
+        var ro = new ResizeObserver(function () {
+          map.resize();
+          syncPopupMax();
+        });
+        ro.observe(root);
+      }
   
       /* ------------------------ state & render ---------------------- */
       function setState(patch) {

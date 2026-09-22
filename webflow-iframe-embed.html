@@ -1,0 +1,127 @@
+<!-- ==================================================================
+     QEA LOCAL STORIES — Webflow side of the iframe embed.
+
+     Paste this ONCE into an Embed element on the Local Stories page.
+     It does not change when the map changes: the map itself lives at
+     rewiring-nz.github.io/qea-local-stories and updates on push.
+
+     What it does: reads the hidden Collection List already on this
+     page, and posts those rows into the iframe. The iframe cannot read
+     them itself — a cross-document read is forbidden by the browser.
+
+     Requires on the same page:
+       - the Collection List, each item carrying an Embed with
+         data-slug / data-name / data-type / data-tech /
+         data-lat / data-lng / data-blurb on a .cms-item element
+       - the QeaStoryCard component, which supplies the rich text
+     ================================================================== -->
+
+<div class="qea-frame-wrap">
+  <iframe
+    id="qea-stories-frame"
+    src="https://rewiring-nz.github.io/qea-local-stories/embed.html"
+    title="QEA Local Stories map"
+    loading="lazy"
+    referrerpolicy="same-origin"></iframe>
+</div>
+
+<style>
+  /* Size the map by styling .qea-frame-wrap in Webflow — height here is
+     only a default for when the Designer sets none. */
+  .qea-frame-wrap { width: 100%; height: 100%; min-height: 620px; }
+  #qea-stories-frame { width: 100%; height: 100%; border: 0; display: block; }
+</style>
+
+<script>
+(function () {
+  var FRAME = document.getElementById("qea-stories-frame");
+  var TARGET = "https://rewiring-nz.github.io";
+
+  function text(el) { return el ? el.innerHTML.trim() : ""; }
+
+  function collect() {
+    var items = document.querySelectorAll(".cms-item[data-slug]");
+    if (!items.length) return [];
+
+    // The rich text lives in the story-card component, in elements
+    // carrying slot="glance" etc. Those are NOT inside the .cms-item,
+    // and the wrappers nest, so climbing the tree finds the wrong
+    // story. They are emitted in the same document order as the items,
+    // so we line them up by index — but only when every list has
+    // exactly one entry per story. If Webflow's markup changes and the
+    // counts stop matching, we ship the short fields alone rather than
+    // risk pairing one story's title with another's text.
+    var slots = ["meet", "glance", "journey", "support", "exploreMore"];
+    var lists = {};
+    var aligned = true;
+    slots.forEach(function (name) {
+      lists[name] = document.querySelectorAll('[slot="' + name + '"]');
+      if (lists[name].length !== items.length) aligned = false;
+    });
+    var propNodes = document.querySelectorAll("[data-props]");
+    var propsAligned = propNodes.length === items.length;
+
+    if (!aligned) {
+      console.warn("[qea] slot counts don't match story count — " +
+        "sending short fields only.");
+    }
+
+    return Array.prototype.map.call(items, function (el, i) {
+      var props = {};
+      if (propsAligned) {
+        try { props = JSON.parse(propNodes[i].getAttribute("data-props")) || {}; }
+        catch (e) { props = {}; }
+      }
+
+      return {
+        name: el.getAttribute("data-name"),
+        slug: el.getAttribute("data-slug"),
+        type: el.getAttribute("data-type"),
+        technologies: el.getAttribute("data-tech"),
+        lat: el.getAttribute("data-lat"),
+        lng: el.getAttribute("data-lng"),
+        summary: el.getAttribute("data-blurb"),
+        // props.name is the Collection's name, not the story's — the
+        // story title comes from data-name above.
+        image: (props.heroImage && props.heroImage.src) || "",
+        quote: props.testimonialQuote || "",
+        url: props.findOutMoreUrl || "",
+        glance: aligned ? text(lists.glance[i]) : "",
+        journey: aligned ? text(lists.journey[i]) : "",
+        support: aligned ? text(lists.support[i]) : "",
+        exploreMore: aligned ? text(lists.exploreMore[i]) : ""
+      };
+    });
+  }
+
+  function send() {
+    if (!FRAME || !FRAME.contentWindow) return;
+    FRAME.contentWindow.postMessage(
+      { type: "qea:data", stories: collect() }, TARGET);
+  }
+
+  // The iframe announces itself when it's ready. Also send on load, in
+  // case that message was missed, and once more shortly after — Webflow
+  // renders the Collection List server-side, but a slow component
+  // hydration can mean the slots aren't populated on the first pass.
+  window.addEventListener("message", function (ev) {
+    if (ev.origin !== TARGET) return;
+    if (ev.data && ev.data.type === "qea:ready") send();
+
+    // Mirror the selected story into this page's address bar so links
+    // remain shareable.
+    if (ev.data && ev.data.type === "qea:story") {
+      try {
+        var url = new URL(location.href);
+        if (ev.data.story) url.searchParams.set("story", ev.data.story);
+        else url.searchParams.delete("story");
+        history.replaceState(history.state, "", url.href);
+      } catch (e) { /* not fatal */ }
+    }
+  });
+
+  if (FRAME) {
+    FRAME.addEventListener("load", function () { send(); setTimeout(send, 1200); });
+  }
+})();
+</script>

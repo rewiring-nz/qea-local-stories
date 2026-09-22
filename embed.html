@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-NZ">
 <head>
 <meta charset="utf-8">
 <title>QEA Local Stories</title>
@@ -7,31 +7,110 @@
 <link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
 <link rel="stylesheet" href="stories.css">
 <style>
-  html, body { margin: 0; padding: 0; background: #fff; }
+  /* The iframe is the container, so the component fills it exactly.
+     Size the <iframe> in Webflow and this page follows. */
+  html, body { height: 100%; margin: 0; padding: 0; background: #fff; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    padding: 12px;
   }
+  #qea-stories-map { height: 100%; }
+  /* Shown only if no story data ever arrives from the parent. */
+  .qea-waiting {
+    display: none;
+    font: 14px/1.5 inherit;
+    color: #666;
+    padding: 24px;
+  }
+  .qea-waiting.is-shown { display: block; }
 </style>
 </head>
 <body>
 
-<!-- Bare, iframe-ready page. Embed with:
-     <iframe src="https://rewiring-nz.github.io/qea-local-stories/embed.html"
-             style="width:100%;height:760px;border:0"
-             title="QEA Local Stories"></iframe>
+<!-- ==================================================================
+     Iframe-embeddable build.
 
-     This page posts the selected story slug up to the parent window as
-     { type: "qea:story", story: "<slug>" } — see README, "URL state". -->
+       <iframe src="https://rewiring-nz.github.io/qea-local-stories/embed.html"
+               style="width:100%;height:760px;border:0"
+               title="QEA Local Stories"></iframe>
+
+     This page has no story data of its own. It cannot read the parent
+     page's Webflow Collection — that is a cross-document read the
+     browser forbids — so the parent posts the rows in instead. See
+     README.md, "Embedding Option C", for the snippet that does it.
+
+     Messages in:  { type: "qea:data", stories: [...] }
+     Messages out: { type: "qea:story", story: "<slug>" | null }
+     ================================================================== -->
 
 <div id="qea-stories-map"></div>
-
-<!-- Replace this block with the real hidden Webflow Collection List,
-     or leave it empty and inject items server-side. -->
-<div id="qea-stories-data" style="display:none" aria-hidden="true"></div>
+<p class="qea-waiting" id="qea-waiting">
+  Waiting for story data from the page…
+</p>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="stories.js"></script>
-<script>initQeaStoriesMap({ cooperativeGestures: true });</script>
+<script>
+(function () {
+  // Only accept data from the QEA site and from Webflow's own preview
+  // domains. This page is public, so without the check any site could
+  // frame it and drive its contents.
+  var ALLOWED = /^https?:\/\/([a-z0-9-]+\.)*(qea\.nz|webflow\.io)$/i;
+
+  // Same-origin is trusted by definition — only a page already on this
+  // origin can send it, and that is how the test harness drives this
+  // page. It grants nothing extra in production, where the parent is
+  // qea.nz and this page is github.io.
+  function trusted(origin) {
+    return origin === window.location.origin || ALLOWED.test(origin);
+  }
+
+  var started = false;
+  var waiting = document.getElementById("qea-waiting");
+
+  // If nothing arrives, say so rather than showing an empty map that
+  // looks like a component fault.
+  var noDataTimer = setTimeout(function () {
+    if (!started) waiting.classList.add("is-shown");
+  }, 4000);
+
+  function start(stories) {
+    if (started) return;
+    started = true;
+    clearTimeout(noDataTimer);
+    waiting.classList.remove("is-shown");
+
+    var instance = initQeaStoriesMap({
+      stories: stories,
+      // The address bar belongs to the parent document; this page can't
+      // touch it cross-origin. It reports the selection upward instead.
+      syncUrl: false,
+      cooperativeGestures: false
+    });
+
+    if (!instance || !window.parent || window.parent === window) return;
+
+    var last;
+    setInterval(function () {
+      var slug = instance.getState().selectedId;
+      if (slug === last) return;
+      last = slug;
+      window.parent.postMessage({ type: "qea:story", story: slug || null }, "*");
+    }, 250);
+  }
+
+  window.addEventListener("message", function (ev) {
+    if (!trusted(ev.origin)) return;
+    var d = ev.data;
+    if (!d || d.type !== "qea:data" || !Array.isArray(d.stories)) return;
+    start(d.stories);
+  });
+
+  // Tell the parent we're ready, in case it loaded before we did and
+  // has already sent its one and only message.
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "qea:ready" }, "*");
+  }
+})();
+</script>
 </body>
 </html>

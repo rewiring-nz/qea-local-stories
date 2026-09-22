@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QEA Local Stories — CMS variant fixture</title>
+<link href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css" rel="stylesheet">
+<link rel="stylesheet" href="../stories.css">
+</head>
+<body>
+
+<!-- ================================================================
+     Fixture for the messy-CMS cases, copied from what the live
+     qea.nz/local-stories page actually emits:
+
+       * the attribute is `data-tech`, not `data-technologies`
+       * the same tag is spelled several ways across rows
+         ("solar" / "Solar", "Commercial kitchen" / "Commercial Kitchen")
+       * trailing spaces on Option values ("Household ")
+       * one row has Latitude and Longitude transposed
+       * one row has no technologies at all
+
+     These are real rows, trimmed to the fields under test. If QEA
+     tidies the Collection, keep this fixture messy — it exists to prove
+     the component survives the mess, not to mirror the current data.
+     ================================================================ -->
+
+<div id="qea-stories-map"></div>
+
+<div id="qea-stories-data" style="display:none" aria-hidden="true">
+
+  <!-- Canonical spelling, arrives first. -->
+  <div class="qea-story-item"
+       data-name="Sasha in Alexandra"
+       data-slug="sasha-in-alexandra"
+       data-type="Household"
+       data-tech="Solar"
+       data-lat="-45.249581" data-lng="169.38242"
+       data-summary="Turned a $6,000 power bill into an investment."></div>
+
+  <!-- Lowercase tag + trailing space on both attributes. Must fold onto
+       the spelling above rather than minting a second "solar" chip. -->
+  <div class="qea-story-item"
+       data-name="Queenstown Ice Arena"
+       data-slug="queenstown-ice-arena"
+       data-type="Business "
+       data-tech="solar "
+       data-lat="-45.03736" data-lng="168.66193"
+       data-summary="Rink plant running on rooftop generation."></div>
+
+  <!-- Two-word tag, lowercase second word. -->
+  <div class="qea-story-item"
+       data-name="Skyline Queenstown"
+       data-slug="skyline-queenstown"
+       data-type="Business"
+       data-tech="Commercial Kitchen"
+       data-lat="-45.028326" data-lng="168.65615"
+       data-summary="Gondola kitchen off gas."></div>
+
+  <div class="qea-story-item"
+       data-name="Ryder Speciality Coffee"
+       data-slug="ryder-speciality-coffee"
+       data-type="business"
+       data-tech="Commercial kitchen "
+       data-lat="-45.009484" data-lng="168.754968"
+       data-summary="Roastery and kitchen electrified."></div>
+
+  <!-- Latitude and Longitude filled in the wrong order. Milford Sound is
+       -44.6711, 167.9192; as written the latitude is 167.9192, which is
+       not a latitude at all. -->
+  <div class="qea-story-item"
+       data-name="Milford Infrastructure"
+       data-slug="milford-infrastructure"
+       data-type="Business"
+       data-tech="Batteries"
+       data-lat="167.9192" data-lng="-44.6711"
+       data-summary="Battery backup at the end of the road."></div>
+
+  <!-- One row spelling the same tag twice. -->
+  <div class="qea-story-item"
+       data-name="Electric Cherries"
+       data-slug="electric-cherries"
+       data-type="Business"
+       data-tech="Solar, solar, Batteries"
+       data-lat="-44.92279" data-lng="169.28175"
+       data-summary="Orchard running on sun."></div>
+
+  <!-- No technologies at all — still lists, still filters as a Business. -->
+  <div class="qea-story-item"
+       data-name="iFLY Queenstown"
+       data-slug="ifly-queenstown"
+       data-type="Business"
+       data-tech=""
+       data-lat="-45.0297943" data-lng="168.657545"
+       data-summary="Indoor skydiving, electrified."></div>
+
+  <!-- Genuinely no location: lists without a marker. -->
+  <div class="qea-story-item"
+       data-name="Story Without A Pin"
+       data-slug="story-without-a-pin"
+       data-type="Community"
+       data-tech="Community"
+       data-lat="" data-lng=""
+       data-summary="Coordinates not filled in yet."></div>
+
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
+<script src="../stories.js"></script>
+<script>
+  initQeaStoriesMap({ cooperativeGestures: false });
+</script>
+</body>
+</html>

@@ -45,10 +45,17 @@
     // Preferred display order for filter chips. Any value found in the
     // CMS that isn't listed here is appended automatically, so the team
     // can add a new category without a code change.
-    typeOrder: ["Households", "Businesses", "Community"],
+    // Preferred chip order and spelling. Matches the labels the live
+    // QEA Local Stories page uses; the plural forms are kept so a
+    // Collection that names the option "Households" still sorts sensibly
+    // instead of falling through to the alphabetical tail.
+    // Supply rows directly instead of reading them from this document's
+    // DOM. Used by embed.html, which receives them from the parent page.
+    stories: null,
+    typeOrder: ["Business", "Household", "Community", "Businesses", "Households"],
     techOrder: [
       "Solar", "Batteries", "EV", "Business", "Cooking", "Heating",
-      "Hot Water", "Commercial Kitchen", "Solar for Renters",
+      "Hot water", "Commercial Kitchen", "Community", "Solar for Renters",
       "Electric Vehicles"
     ]
   };
@@ -88,7 +95,12 @@
     return String(str || "")
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
+      // Escaped rather than written literally: webflow-embed.html carries
+      // no charset of its own, so anywhere it is served without one the
+      // raw combining-mark bytes get decoded as Latin-1 and this becomes
+      // an invalid range — which throws while the IIFE is still being
+      // defined and takes the whole component down. Keep this ASCII.
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
   }
@@ -114,6 +126,27 @@
       // as "no location" rather than plotting a marker off Africa.
       !(lat === 0 && lng === 0)
     );
+  }
+
+  // A latitude outside ±90 is impossible, so a pair like
+  // (167.9192, -44.6711) can only be a transposed row — Webflow's
+  // Latitude and Longitude are two free number inputs and are easy to
+  // fill in the wrong order. Recover the point when the swap is the
+  // only reading that works, and warn so the CMS row still gets fixed
+  // at source rather than silently depending on this.
+  function resolveLatLng(lat, lng, label) {
+    if (isValidLatLng(lat, lng)) return { lat: lat, lng: lng };
+    if (isValidLatLng(lng, lat)) {
+      if (window.console && window.console.warn) {
+        window.console.warn(
+          '[qea-stories] Latitude/Longitude look transposed for "' + label +
+          '" (lat=' + lat + ", lng=" + lng + "). Plotting the swapped pair; " +
+          "correct the CMS row to silence this."
+        );
+      }
+      return { lat: lng, lng: lat };
+    }
+    return { lat: lat, lng: lng };
   }
 
   /* ========================= CMS DATA LAYER =========================
@@ -142,17 +175,24 @@
     return img.getAttribute("src") || "";
   }
 
-  function readStories(listSelector) {
-    var items = document.querySelectorAll(listSelector);
+  // Both data sources — this document's CMS list, and rows posted in
+  // from a parent page when the component runs in an iframe — funnel
+  // through here, so there is exactly one definition of what a story is
+  // and one place where slugs, coordinates and tag lists get cleaned up.
+  //
+  // `raw` uses the same key names either way. Rich-text values are HTML
+  // strings and are injected as HTML; everything else is escaped at
+  // render time. In the iframe case that means the parent page is
+  // trusted, which it is — it is the same site.
+  function makeStories(raws) {
     var stories = [];
     var seen = Object.create(null);
 
-    Array.prototype.forEach.call(items, function (el) {
-      var d = el.dataset;
-      var title = (d.title || d.name || "").trim();
+    raws.forEach(function (raw) {
+      var title = String(raw.title || raw.name || "").trim();
       if (!title) return;
 
-      var slug = (d.slug || "").trim() || slugify(title);
+      var slug = String(raw.slug || "").trim() || slugify(title);
       // Duplicate slugs would make ?story= ambiguous and break the
       // byId lookup that everything else relies on. Disambiguate rather
       // than silently dropping the second story.
@@ -163,8 +203,45 @@
       }
       seen[slug] = true;
 
-      var lat = parseFloat(d.lat);
-      var lng = parseFloat(d.lng);
+      var point = resolveLatLng(parseFloat(raw.lat), parseFloat(raw.lng), title);
+      var lat = point.lat;
+      var lng = point.lng;
+
+      // An injected row may give technologies as a real array; a DOM row
+      // gives a comma-joined string.
+      var technologies = Array.isArray(raw.technologies)
+        ? raw.technologies.map(function (t) { return String(t).trim(); }).filter(Boolean)
+        : splitList(raw.technologies);
+
+      stories.push({
+        slug: slug,
+        title: title,
+        type: String(raw.type || "").trim(),
+        technologies: technologies,
+        location: String(raw.location || "").trim(),
+        lat: lat,
+        lng: lng,
+        hasLocation: isValidLatLng(lat, lng),
+        summary: String(raw.summary || "").trim(),
+        url: String(raw.url || "").trim(),
+        image: raw.image || "",
+        glance: raw.glance || "",
+        journey: raw.journey || "",
+        support: raw.support || "",
+        quote: raw.quote || "",
+        findOutMore: raw.findOutMore || "",
+        exploreMore: raw.exploreMore || ""
+      });
+    });
+
+    return stories;
+  }
+
+  function readStories(listSelector) {
+    var items = document.querySelectorAll(listSelector);
+
+    return makeStories(Array.prototype.map.call(items, function (el) {
+      var d = el.dataset;
 
       // Technologies can arrive either as a comma-joined attribute or,
       // for a Webflow multi-reference, as nested elements.
@@ -173,19 +250,19 @@
         ? Array.prototype.map.call(techNodes, function (n) {
             return n.textContent.trim();
           }).filter(Boolean)
-        : splitList(d.technologies || d.technology);
+        : (d.technologies || d.technology || d.tech);
 
-      stories.push({
-        slug: slug,
-        title: title,
-        type: (d.type || d.category || "").trim(),
+      return {
+        title: d.title || d.name,
+        slug: d.slug,
+        type: d.type || d.category,
         technologies: technologies,
-        location: (d.location || "").trim(),
-        lat: lat,
-        lng: lng,
-        hasLocation: isValidLatLng(lat, lng),
-        summary: (d.summary || d.description || "").trim(),
-        url: (d.url || d.link || "").trim(),
+        location: d.location,
+        lat: d.lat,
+        lng: d.lng,
+        // `blurb` is what the QEA Collection calls the short description.
+        summary: d.summary || d.description || d.blurb,
+        url: d.url || d.link,
         image: readImage(el, "featured"),
         glance: readRich(el, "glance"),
         journey: readRich(el, "journey"),
@@ -193,10 +270,8 @@
         quote: readRich(el, "quote"),
         findOutMore: readRich(el, "find-out-more"),
         exploreMore: readRich(el, "explore-more")
-      });
-    });
-
-    return stories;
+      };
+    }));
   }
 
   /* ====================== DERIVED FILTER OPTIONS ======================
@@ -204,6 +279,58 @@
      shows up as a new chip with no code change. `order` just fixes the
      position of the values we already know about.
      ================================================================== */
+
+  // Webflow lets the same tag be typed several ways across CMS rows —
+  // "solar" and "Solar", "Commercial kitchen" and "Commercial Kitchen".
+  // Left alone each spelling becomes its own chip, and picking one
+  // hides the stories that chose the other. Fold them onto one display
+  // spelling: the one from the preferred order if it matches
+  // case-insensitively, otherwise the first spelling the data uses.
+  //
+  // This normalises how a tag is *written*, not which tags exist — a
+  // category QEA invents tomorrow still appears on its own. Don't turn
+  // it into a lookup of permitted values.
+  function canonicaliser(values, order) {
+    var canon = Object.create(null);
+    function register(v) {
+      var k = v.toLowerCase();
+      if (!canon[k]) canon[k] = v;
+    }
+    order.forEach(register);
+    values.forEach(register);
+    return function (v) {
+      return v ? (canon[v.toLowerCase()] || v) : v;
+    };
+  }
+
+  // Runs once, over every story, before anything derives a chip or a
+  // pill from the data — so the list, the filters and storyMatches()
+  // are all comparing the same strings.
+  function canonicaliseTags(stories, typeOrder, techOrder) {
+    var types = [];
+    var techs = [];
+    stories.forEach(function (s) {
+      if (s.type) types.push(s.type);
+      s.technologies.forEach(function (t) { techs.push(t); });
+    });
+
+    var toType = canonicaliser(types, typeOrder);
+    var toTech = canonicaliser(techs, techOrder);
+
+    stories.forEach(function (s) {
+      s.type = toType(s.type);
+      var seen = Object.create(null);
+      // A single row spelling one tag twice ("Solar, solar") collapses
+      // to one pill rather than rendering a duplicate.
+      s.technologies = s.technologies.map(toTech).filter(function (t) {
+        if (seen[t]) return false;
+        seen[t] = true;
+        return true;
+      });
+    });
+
+    return stories;
+  }
 
   function collectValues(stories, pick, order) {
     var found = Object.create(null);
@@ -324,7 +451,12 @@
     // "sometimes the popup doesn't open" bug this component avoids.
     if (root.__qeaStoriesInstance) return root.__qeaStoriesInstance;
 
-    var stories = readStories(opts.listSelector);
+    // In an iframe there is no CMS list in this document — the parent
+    // reads its own Collection and posts the rows in as opts.stories.
+    var stories = canonicaliseTags(
+      opts.stories ? makeStories(opts.stories) : readStories(opts.listSelector),
+      opts.typeOrder, opts.techOrder
+    );
     var byId = Object.create(null);
     stories.forEach(function (s) { byId[s.slug] = s; });
 
@@ -473,7 +605,7 @@
        height and leaves room for the pin and the tip.
        --------------------------------------------------------------- */
     function popupMaxHeight() {
-      var h = mapEl.getBoundingClientRect().height || opts.mapMinHeight || 560;
+      var h = mapEl.getBoundingClientRect().height || 560;
       return Math.max(160, Math.round(h - 160));
     }
 
@@ -483,6 +615,20 @@
 
     syncPopupMax();
     window.addEventListener("resize", syncPopupMax);
+
+    // The component is sized by its container, not by the window, so the
+    // box can change without a window resize ever firing — a Webflow
+    // breakpoint, a parent that grows, or someone editing the Embed's
+    // height in the Designer. Watch the element itself and tell MapLibre
+    // to re-measure, otherwise the canvas keeps its old dimensions and
+    // the map renders letterboxed inside its own container.
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () {
+        map.resize();
+        syncPopupMax();
+      });
+      ro.observe(root);
+    }
 
     /* ------------------------ state & render ---------------------- */
     function setState(patch) {

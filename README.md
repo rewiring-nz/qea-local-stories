@@ -47,7 +47,10 @@ accessibility, responsive behaviour — is complete and tested.
 | `embed.html` | Bare, iframe-ready page (embedding Option A). |
 | `webflow-embed.html` | **Generated** — CSS + JS inlined for a Webflow Embed (Option B). |
 | `gen_embed.sh` | Regenerates `webflow-embed.html`. Run after every edit. |
-| `tests/browser-test.js` | Playwright suite — 49 checks covering the brief's test list. |
+| `tests/browser-test.js` | Playwright suite — 89 checks covering the brief's test list. |
+| `tests/cms-variants.html` | Fixture of the awkward rows the live Collection really contains. |
+| `webflow-iframe-embed.html` | The Webflow side of Option C — pasted once, then left alone. |
+| `tests/iframe-parent.html` | Fixture for the postMessage bridge. |
 
 `webflow-embed.html` is a build artifact. **Never hand-edit it** — change
 `stories.js` / `stories.css` and run `./gen_embed.sh`.
@@ -105,7 +108,7 @@ using the purple *Add Field* button to insert each CMS field where the
      data-title="{{ Name }}"
      data-slug="{{ Slug }}"
      data-type="{{ Type }}"
-     data-technologies="{{ Technology }}"
+     data-tech="{{ Technology }}"
      data-location="{{ Location name }}"
      data-lat="{{ Latitude }}"
      data-lng="{{ Longitude }}"
@@ -169,7 +172,40 @@ a Collection List on the parent page.
    `webflow-embed.html`.
 
 Both live in the same document, so the component reads the real CMS data
-directly. This is the option to use on the Local Stories page.
+directly.
+
+### Option C — iframe from GitHub Pages (recommended)
+
+The component is served from
+`https://rewiring-nz.github.io/qea-local-stories/embed.html`, and the
+Webflow page holds a small bridge instead of the whole component.
+
+1. Add the hidden Collection List described above.
+2. Add an **Embed** element and paste `webflow-iframe-embed.html`.
+
+**Why this is the one to use.** Options A and B mean re-pasting the
+entire component into Webflow every time it changes, and
+`webflow-embed.html` is within a few thousand characters of Webflow's
+50,000-character Embed limit. With Option C the Webflow side is ~5,000
+characters and *stops changing*: updates ship by pushing to `main`.
+
+**The catch, and how it's handled.** An iframe can't read the parent
+page's Collection — that read is cross-document and the browser forbids
+it. So the bridge reads the Collection in the parent and posts the rows
+into the iframe as `{ type: "qea:data", stories: [...] }`. The component
+treats those rows exactly like DOM-read ones; see "Two data sources" in
+CLAUDE.md.
+
+Rich text is the fiddly part. It lives in the story-card component, in
+elements carrying `slot="glance"` and friends, which are *not* inside
+the Collection Item, and the wrappers nest — so climbing the tree finds
+the wrong story. The bridge pairs them by document order instead, and
+only when every slot list has exactly one entry per story. If Webflow's
+markup changes and the counts stop matching, it sends the short fields
+alone rather than risk showing one story's text under another's title.
+
+`embed.html` only accepts messages from `qea.nz`, Webflow's preview
+domains, and its own origin.
 
 ---
 
@@ -342,7 +378,7 @@ The suite drives a real Chromium browser. It needs MapLibre reachable —
 either from the CDN, or vendored locally as `.testvendor/` (see the top of
 the test file).
 
-### Results — 49 checks, all passing
+### Results — 89 checks, all passing
 
 | Area | Checks |
 |---|---|
@@ -356,6 +392,9 @@ the test file).
 | Responsive | desktop side-by-side, map 62% width, mobile stacked, mobile map height sane, no horizontal scroll, mobile selection works |
 | Popup fit | every story's popup renders fully inside the map container; the bounds-fit fallback never overrides a selection |
 | Robustness | re-init doesn't duplicate markers, no uncaught JS errors |
+| Real-CMS quirks | `data-tech` read, case variants folded to one chip, filters catch every spelling, duplicate tag in a row renders once, transposed lat/lng recovered, blank coordinates still mean no marker |
+| Host-driven sizing | fills a tall container, floor applies to a short one, `--qea-min-height: 0` releases it, canvas re-measures on resize, mobile grows instead of cramping the list |
+| Iframe bridge | rows cross the bridge, rich text pairs with the right story, props arrive, canonicalisation and coordinate recovery still run, selection posts back to the parent |
 
 Four genuine bugs were found and fixed during testing — the first two by
 the suite, the second two by looking at screenshots of the rendered

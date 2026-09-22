@@ -374,6 +374,235 @@ async function newPage(browser, url) {
     `${doubleInit.before} -> ${doubleInit.after}`);
   check('no uncaught JS errors', page._errors.length === 0, page._errors.slice(0, 3).join(' | '));
 
+  // ---------------------------------------------------------------
+  // Everything below runs against tests/cms-variants.html, a fixture of
+  // the awkward rows the live QEA Collection actually contains. See the
+  // comment at the top of that file before tidying it.
+  console.log('\n[10] Real-CMS quirks');
+  const variantsUrl = (process.env.QEA_VARIANTS_URL ||
+    BASE.replace(/[^/]*$/, '') + 'tests/cms-variants.html');
+  const vpage = await newPage(browser, variantsUrl);
+  const vstories = await vpage.evaluate(() =>
+    document.querySelector('#qea-stories-map').__qeaStoriesInstance.stories);
+  const byslug = Object.fromEntries(vstories.map(s => [s.slug, s]));
+
+  // The live page emits data-tech; earlier builds only read
+  // data-technologies, which left the technology filter empty.
+  check('data-tech is read as technologies',
+    byslug['sasha-in-alexandra'].technologies.join() === 'Solar',
+    JSON.stringify(byslug['sasha-in-alexandra'].technologies));
+
+  const techChips = await vpage.$$eval('[data-group="tech"] .qea-chip',
+    els => els.map(e => e.dataset.value).filter(v => v !== '__all__'));
+  check('case variants collapse to one technology chip',
+    techChips.filter(v => v.toLowerCase() === 'solar').length === 1,
+    techChips.join(' | '));
+  check('two-word tag case variants collapse too',
+    techChips.filter(v => v.toLowerCase() === 'commercial kitchen').length === 1,
+    techChips.join(' | '));
+  check('canonical spelling comes from the preferred order',
+    techChips.includes('Solar') && techChips.includes('Commercial Kitchen'),
+    techChips.join(' | '));
+
+  const typeChips = await vpage.$$eval('[data-group="type"] .qea-chip',
+    els => els.map(e => e.dataset.value).filter(v => v !== '__all__'));
+  check('type case and trailing space collapse to one chip',
+    typeChips.filter(v => v.toLowerCase() === 'business').length === 1,
+    typeChips.join(' | '));
+
+  // The point of folding the spellings: a filter click has to catch the
+  // rows that spelled the tag differently.
+  await vpage.evaluate(() =>
+    document.querySelector('#qea-stories-map').__qeaStoriesInstance.setFilter('tech', 'Solar'));
+  await vpage.waitForTimeout(300);
+  const solarCards = await visibleCards(vpage);
+  check('filtering Solar catches the "solar " row',
+    solarCards.includes('sasha-in-alexandra') && solarCards.includes('queenstown-ice-arena'),
+    solarCards.join(','));
+
+  await vpage.evaluate(() =>
+    document.querySelector('#qea-stories-map').__qeaStoriesInstance.setFilter('tech', '__all__'));
+  await vpage.waitForTimeout(300);
+
+  check('a tag spelled twice in one row renders one pill',
+    (await vpage.$$eval('.qea-card[data-slug="electric-cherries"] .qea-pill--tech',
+      els => els.map(e => e.textContent.trim()))).filter(t => t === 'Solar').length === 1);
+
+  // Transposed Latitude/Longitude — recovered rather than dropped.
+  const milford = byslug['milford-infrastructure'];
+  check('transposed lat/lng is recovered', milford.hasLocation === true &&
+    Math.abs(milford.lat - -44.6711) < 1e-6 && Math.abs(milford.lng - 167.9192) < 1e-6,
+    `${milford.lat}, ${milford.lng}`);
+  check('recovered row gets a marker',
+    (await visibleMarkers(vpage)).includes('milford-infrastructure'));
+
+  // Still-correct behaviour that the swap must not have loosened.
+  check('blank coordinates still mean no marker',
+    byslug['story-without-a-pin'].hasLocation === false &&
+    !(await visibleMarkers(vpage)).includes('story-without-a-pin'));
+  check('story without coordinates still lists',
+    (await visibleCards(vpage)).includes('story-without-a-pin'));
+  check('empty data-tech lists with no technology pills',
+    byslug['ifly-queenstown'].technologies.length === 0 &&
+    (await visibleCards(vpage)).includes('ifly-queenstown'));
+  check('no uncaught JS errors on the variants fixture',
+    vpage._errors.length === 0, vpage._errors.slice(0, 3).join(' | '));
+
+  // ---------------------------------------------------------------
+  // The component is sized by its host box: Webflow sets the height on
+  // the Embed and the component follows, with --qea-min-height as the
+  // floor for an auto-height container.
+  console.log('\n[11] Host-driven sizing');
+  const spage = await newPage(browser, BASE);
+  const box = () => spage.evaluate(() => {
+    const el = document.querySelector('#qea-stories-map');
+    const map = document.querySelector('.qea-map');
+    const list = document.querySelector('.qea-listcol');
+    return {
+      root: Math.round(el.getBoundingClientRect().height),
+      rootW: Math.round(el.getBoundingClientRect().width),
+      parentW: (() => { const p = el.parentElement, cs = getComputedStyle(p);
+        return Math.round(p.getBoundingClientRect().width
+          - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)); })(),
+      map: Math.round(map.getBoundingClientRect().height),
+      list: Math.round(list.getBoundingClientRect().height),
+      canvas: Math.round((document.querySelector('.qea-map canvas') || {getBoundingClientRect:()=>({height:0})}).getBoundingClientRect().height),
+    };
+  });
+
+  const auto = await box();
+  check('auto-height container falls back to --qea-min-height',
+    auto.root === 560, `${auto.root}px`);
+  check('component fills its container width',
+    auto.rootW === auto.parentW, `${auto.rootW} vs ${auto.parentW}`);
+
+  // A taller host box: the component should grow into it, not stay 560.
+  await spage.evaluate(() => {
+    document.querySelector('#qea-stories-map').parentElement.style.height = '900px';
+  });
+  await spage.waitForTimeout(600);
+  const tall = await box();
+  check('fills a container taller than the floor', tall.root === 900, `${tall.root}px`);
+  check('map column grows with the container', tall.map > auto.map,
+    `${auto.map} -> ${tall.map}`);
+  check('list column grows with the container', tall.list > auto.list,
+    `${auto.list} -> ${tall.list}`);
+  check('map canvas re-measures on container resize',
+    Math.abs(tall.canvas - tall.map) <= 2, `canvas ${tall.canvas} vs map ${tall.map}`);
+
+  // A shorter host box only wins once the floor is lifted — that is the
+  // documented escape hatch, and the floor exists so an unstyled
+  // container can't collapse the map to nothing.
+  await spage.evaluate(() => {
+    document.querySelector('#qea-stories-map').parentElement.style.height = '400px';
+  });
+  await spage.waitForTimeout(400);
+  check('floor still applies to a short container', (await box()).root === 560);
+
+  await spage.evaluate(() => {
+    document.querySelector('#qea-stories-map').style.setProperty('--qea-min-height', '0px');
+  });
+  await spage.waitForTimeout(600);
+  const short = await box();
+  check('--qea-min-height: 0 lets a short container win', short.root === 400, `${short.root}px`);
+  check('map canvas re-measures when shrinking',
+    Math.abs(short.canvas - short.map) <= 2, `canvas ${short.canvas} vs map ${short.map}`);
+
+  // Mobile: the map takes its slice off the top and the list takes the
+  // rest of the same box, instead of running on down the page.
+  await spage.setViewportSize({ width: 390, height: 844 });
+  await spage.evaluate(() => {
+    const el = document.querySelector('#qea-stories-map');
+    el.style.removeProperty('--qea-min-height');
+    el.parentElement.style.height = '700px';
+  });
+  await spage.waitForTimeout(600);
+  const mob = await box();
+  // Mobile deliberately opts out of filling the box: the filter chips
+  // wrap to ~280px at phone width, so a fixed height leaves the list a
+  // few dozen pixels. The host height becomes a minimum instead.
+  check('mobile grows past a fixed container rather than cramping the list',
+    mob.root > 700, `${mob.root}px`);
+  check('mobile map keeps its fixed slice', mob.map >= 330 && mob.map <= 350, `${mob.map}px`);
+  check('mobile list is not reduced to a sliver', mob.list > 600,
+    `list ${mob.list} in ${mob.root}`);
+  check('mobile list does not become a nested scroll region',
+    (await spage.evaluate(() => getComputedStyle(document.querySelector('.qea-list')).overflowY)) === 'visible');
+  check('no uncaught JS errors while resizing', spage._errors.length === 0,
+    spage._errors.slice(0, 3).join(' | '));
+
+  // ---------------------------------------------------------------
+  // The iframe build: embed.html has no CMS list of its own, so the
+  // parent page reads its Collection and posts the rows in.
+  console.log('\n[12] Iframe bridge');
+  const parentUrl = (process.env.QEA_PARENT_URL ||
+    BASE.replace(/[^/]*$/, '') + 'tests/iframe-parent.html');
+  const ppage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const perrors = [];
+  ppage.on('pageerror', e => perrors.push(e.message));
+  await ppage.goto(parentUrl, { waitUntil: 'load' });
+  const frame = ppage.frameLocator('#qea-stories-frame');
+  let bridged = true;
+  try {
+    await frame.locator('.qea-card').first().waitFor({ timeout: 15000 });
+  } catch (e) { bridged = false; }
+  check('parent posts stories into the iframe', bridged);
+
+  if (bridged) {
+    await ppage.waitForTimeout(1200);
+    const inFrame = await ppage.frames().find(f => f.url().includes('embed.html'))
+      .evaluate(() => {
+        const inst = document.querySelector('#qea-stories-map').__qeaStoriesInstance;
+        const byId = Object.fromEntries(inst.stories.map(s => [s.slug, s]));
+        return {
+          count: inst.stories.length,
+          cards: document.querySelectorAll('.qea-card').length,
+          sasha: byId['sasha-in-alexandra'],
+          milford: byId['milford-infrastructure'],
+          techChips: [...document.querySelectorAll('[data-group="tech"] .qea-chip')]
+            .map(e => e.dataset.value).filter(v => v !== '__all__'),
+          rootH: Math.round(document.querySelector('#qea-stories-map').getBoundingClientRect().height),
+        };
+      });
+
+    check('every story crosses the bridge', inFrame.count === 3, `${inFrame.count}`);
+    check('cards render inside the iframe', inFrame.cards === 3, `${inFrame.cards}`);
+    check('short fields arrive', inFrame.sasha.title === 'Sasha in Alexandra' &&
+      /power bill/.test(inFrame.sasha.summary), JSON.stringify(inFrame.sasha.summary));
+    check('data-blurb is used as the summary', !!inFrame.sasha.summary);
+    check('rich text is paired with the right story',
+      /Glance A/.test(inFrame.sasha.glance) && /Journey A/.test(inFrame.sasha.journey),
+      JSON.stringify(inFrame.sasha.glance));
+    check('component props arrive (image, quote, link)',
+      /a\.png$/.test(inFrame.sasha.image) && inFrame.sasha.quote === 'Quote A',
+      `${inFrame.sasha.image} | ${inFrame.sasha.quote}`);
+    // Index alignment is the risky part of the bridge: if it slipped,
+    // a story would show another story's text and look plausible.
+    check('second story gets its own text, not the first\'s',
+      /Glance B/.test(inFrame.milford.glance) &&
+      !/Glance A/.test(inFrame.milford.glance),
+      JSON.stringify(inFrame.milford.glance));
+    check('canonicalisation still runs on bridged rows',
+      inFrame.techChips.filter(v => v.toLowerCase() === 'solar').length === 1,
+      inFrame.techChips.join(' | '));
+    check('transposed coordinates still recovered over the bridge',
+      inFrame.milford.hasLocation === true &&
+      Math.abs(inFrame.milford.lat - -44.6711) < 1e-6,
+      `${inFrame.milford.lat}, ${inFrame.milford.lng}`);
+    check('iframe page fills the frame', inFrame.rootH >= 690 && inFrame.rootH <= 700,
+      `${inFrame.rootH}px`);
+
+    // Selection has to travel back up so the parent can keep the URL.
+    await frame.locator('.qea-card[data-slug="milford-infrastructure"]').click();
+    await ppage.waitForTimeout(700);
+    check('selection is posted back to the parent',
+      (await ppage.evaluate(() => window.__qeaLastStory)) === 'milford-infrastructure',
+      String(await ppage.evaluate(() => window.__qeaLastStory)));
+  }
+
+  check('no uncaught JS errors on the parent page', perrors.length === 0,
+    perrors.slice(0, 3).join(' | '));
+
   await browser.close();
   console.log(`\n================  ${pass} passed, ${fail} failed  ================`);
   if (failures.length) { console.log('Failures:'); failures.forEach(f => console.log('  - ' + f)); }

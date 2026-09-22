@@ -603,6 +603,63 @@ async function newPage(browser, url) {
   check('no uncaught JS errors on the parent page', perrors.length === 0,
     perrors.slice(0, 3).join(' | '));
 
+  // ---------------------------------------------------------------
+  // The palette is sampled from the live QEA page, so a drift here is a
+  // visible mismatch on the site, not a matter of taste.
+  console.log('\n[13] QEA palette');
+  const cpage = await newPage(browser, BASE);
+  const hex = await cpage.evaluate(() => {
+    const h = s => { const m = s.match(/\d+/g);
+      return m ? '#' + m.slice(0, 3).map(n => (+n).toString(16).padStart(2, '0')).join('').toUpperCase() : s; };
+    const g = (sel, prop) => { const el = document.querySelector(sel);
+      return el ? h(getComputedStyle(el)[prop]) : null; };
+    return {
+      page: g('.qea-root', 'backgroundColor'),
+      card: g('.qea-card', 'backgroundColor'),
+      chipOn: g('.qea-chip[aria-pressed="true"]', 'backgroundColor'),
+      chipOff: g('.qea-chip[aria-pressed="false"]', 'backgroundColor'),
+      pillType: g('.qea-pill--type', 'backgroundColor'),
+      pillTech: g('.qea-pill--tech', 'backgroundColor'),
+      title: g('.qea-card__title', 'color'),
+      summary: g('.qea-card__summary', 'color'),
+      pin: g('.qea-marker__pin', 'backgroundColor'),
+    };
+  });
+  const want = { page: '#1E1E7F', card: '#262784', chipOn: '#FF527E', chipOff: '#2F2E8A',
+    pillType: '#FF527E', pillTech: '#3C3C90', title: '#FFFFFF', summary: '#9698DD', pin: '#FF527E' };
+  Object.keys(want).forEach(k => {
+    check(`palette: ${k} is ${want[k]}`, hex[k] === want[k], `got ${hex[k]}`);
+  });
+
+  // ---------------------------------------------------------------
+  // The vector basemap means the style JSON is now a network
+  // dependency, where before everything was raster tiles that could all
+  // fail harmlessly. The component still has to work without it.
+  console.log('\n[14] Basemap style unreachable');
+  const bpage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const berrors = [];
+  bpage.on('pageerror', e => berrors.push(e.message));
+  await bpage.route('**/basemaps.cartocdn.com/**', r => r.abort());
+  await bpage.goto(BASE, { waitUntil: 'load' });
+  let listedWithoutStyle = true;
+  try { await bpage.waitForSelector('.qea-card', { timeout: 15000 }); }
+  catch (e) { listedWithoutStyle = false; }
+  check('stories still list when the basemap style 404s', listedWithoutStyle);
+
+  if (listedWithoutStyle) {
+    await bpage.waitForTimeout(1500);
+    await bpage.click('.qea-card[data-slug="ziptrek"]');
+    await bpage.waitForTimeout(600);
+    check('selection still works without a basemap',
+      (await popupTitle(bpage)) === 'Ziptrek Ecotours');
+    check('filters still work without a basemap', await bpage.evaluate(() => {
+      document.querySelector('#qea-stories-map').__qeaStoriesInstance.setFilter('type', 'Businesses');
+      return true;
+    }));
+  }
+  check('no uncaught JS errors without a basemap', berrors.length === 0,
+    berrors.slice(0, 3).join(' | '));
+
   await browser.close();
   console.log(`\n================  ${pass} passed, ${fail} failed  ================`);
   if (failures.length) { console.log('Failures:'); failures.forEach(f => console.log('  - ' + f)); }

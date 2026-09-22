@@ -19,16 +19,21 @@
      rule further down hardcodes a brand colour. */
   
   .qea-root {
-    /* --- brand palette (retune these) --- */
-    --qea-ink: #12302b;
-    --qea-ink-soft: #4a5f5a;
-    --qea-accent: #1d6b5a;
-    --qea-accent-dark: #12503f;
-    --qea-accent-tint: #e7f2ee;
-    --qea-surface: #ffffff;
-    --qea-surface-alt: #f5f7f6;
-    --qea-border: #dfe5e3;
-    --qea-focus: #b8541f;
+    /* --- brand palette ---
+       Sampled from the QEA Local Stories page so the component sits on
+       that page without a seam. Retune here; nothing below hardcodes a
+       brand colour. */
+    --qea-page: #1e1e7f;        /* page behind the component */
+    --qea-ink: #ffffff;         /* titles */
+    --qea-ink-soft: #9698dd;    /* body copy, labels, counts */
+    --qea-accent: #ff527e;      /* markers, active chip, type pill, CTA */
+    --qea-accent-dark: #eaecff; /* text on the tinted surface, links */
+    --qea-accent-tint: #3c3c90; /* technology pill, selected card */
+    --qea-surface: #262784;     /* cards, popup */
+    --qea-surface-alt: #2f2e8a; /* map backdrop, popup sections */
+    --qea-chip: #2f2e8a;        /* unselected filter chip */
+    --qea-border: #343593;
+    --qea-focus: #a0b4ff;       /* also the water colour on the basemap */
   
     /* --- type --- */
     --qea-font: inherit;
@@ -65,6 +70,7 @@
     min-height: var(--qea-min-height);
     display: flex;
     flex-direction: column;
+    background: var(--qea-page);
   }
   .qea-root *,
   .qea-root *::before,
@@ -98,6 +104,8 @@
   }
   
   .qea-map { width: 100%; height: 100%; }
+  
+  
   
   .qea-listcol {
     flex: 1 1 auto;
@@ -139,13 +147,13 @@
     font: inherit;
     font-size: var(--qea-size-small);
     padding: 5px 12px;
-    border: 1px solid var(--qea-border);
+    border: 1px solid transparent;
     border-radius: 999px;
-    background: var(--qea-surface);
-    color: var(--qea-ink-soft);
+    background: var(--qea-chip);
+    color: #e4e7ff;
     cursor: pointer;
   }
-  .qea-chip:hover { border-color: var(--qea-accent); color: var(--qea-accent); }
+  .qea-chip:hover { border-color: var(--qea-accent); }
   
   /* Selected filter carries weight + fill, not colour alone. */
   .qea-chip[aria-pressed="true"] {
@@ -496,7 +504,7 @@
       // Basemap. No API key required — Esri's public raster tiles, the
       // same keyless approach used by the sibling rewiring-nz maps.
       // Swap `basemap` for "satellite" if you'd rather have imagery.
-      basemap: "light",
+      basemap: "qea",
       cooperativeGestures: true,
       // Preferred display order for filter chips. Any value found in the
       // CMS that isn't listed here is appended automatically, so the team
@@ -505,6 +513,9 @@
       // QEA Local Stories page uses; the plural forms are kept so a
       // Collection that names the option "Households" still sorts sensibly
       // instead of falling through to the alphabetical tail.
+      // Supply rows directly instead of reading them from this document's
+      // DOM. Used by embed.html, which receives them from the parent page.
+      stories: null,
       typeOrder: ["Business", "Household", "Community", "Businesses", "Households"],
       techOrder: [
         "Solar", "Batteries", "EV", "Business", "Cooking", "Heating",
@@ -522,6 +533,24 @@
           "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
         ],
         attribution: "Tiles &copy; Esri"
+      },
+      // The QEA look: navy land, periwinkle water. A tinted raster can't
+      // produce it — tinting preserves the tiles' own light/dark
+      // relationship, and every dark basemap draws water DARKER than land,
+      // which is the opposite of this design. So this one is a vector
+      // style whose layers get recoloured after load. CARTO's basemaps are
+      // free and need no key, in keeping with the rest of the component.
+      qea: {
+        style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        attribution: "&copy; OpenStreetMap contributors, &copy; CARTO",
+        recolor: {
+          background: "#1e1e7f",
+          land: "#1e1e7f",
+          water: "#a0b4ff",
+          line: "#34349a",
+          label: "#b8bbf1",
+          halo: "#1e1e7f"
+        }
       },
       satellite: {
         tiles: [
@@ -628,17 +657,24 @@
       return img.getAttribute("src") || "";
     }
   
-    function readStories(listSelector) {
-      var items = document.querySelectorAll(listSelector);
+    // Both data sources — this document's CMS list, and rows posted in
+    // from a parent page when the component runs in an iframe — funnel
+    // through here, so there is exactly one definition of what a story is
+    // and one place where slugs, coordinates and tag lists get cleaned up.
+    //
+    // `raw` uses the same key names either way. Rich-text values are HTML
+    // strings and are injected as HTML; everything else is escaped at
+    // render time. In the iframe case that means the parent page is
+    // trusted, which it is — it is the same site.
+    function makeStories(raws) {
       var stories = [];
       var seen = Object.create(null);
   
-      Array.prototype.forEach.call(items, function (el) {
-        var d = el.dataset;
-        var title = (d.title || d.name || "").trim();
+      raws.forEach(function (raw) {
+        var title = String(raw.title || raw.name || "").trim();
         if (!title) return;
   
-        var slug = (d.slug || "").trim() || slugify(title);
+        var slug = String(raw.slug || "").trim() || slugify(title);
         // Duplicate slugs would make ?story= ambiguous and break the
         // byId lookup that everything else relies on. Disambiguate rather
         // than silently dropping the second story.
@@ -649,9 +685,45 @@
         }
         seen[slug] = true;
   
-        var point = resolveLatLng(parseFloat(d.lat), parseFloat(d.lng), title);
+        var point = resolveLatLng(parseFloat(raw.lat), parseFloat(raw.lng), title);
         var lat = point.lat;
         var lng = point.lng;
+  
+        // An injected row may give technologies as a real array; a DOM row
+        // gives a comma-joined string.
+        var technologies = Array.isArray(raw.technologies)
+          ? raw.technologies.map(function (t) { return String(t).trim(); }).filter(Boolean)
+          : splitList(raw.technologies);
+  
+        stories.push({
+          slug: slug,
+          title: title,
+          type: String(raw.type || "").trim(),
+          technologies: technologies,
+          location: String(raw.location || "").trim(),
+          lat: lat,
+          lng: lng,
+          hasLocation: isValidLatLng(lat, lng),
+          summary: String(raw.summary || "").trim(),
+          url: String(raw.url || "").trim(),
+          image: raw.image || "",
+          glance: raw.glance || "",
+          journey: raw.journey || "",
+          support: raw.support || "",
+          quote: raw.quote || "",
+          findOutMore: raw.findOutMore || "",
+          exploreMore: raw.exploreMore || ""
+        });
+      });
+  
+      return stories;
+    }
+  
+    function readStories(listSelector) {
+      var items = document.querySelectorAll(listSelector);
+  
+      return makeStories(Array.prototype.map.call(items, function (el) {
+        var d = el.dataset;
   
         // Technologies can arrive either as a comma-joined attribute or,
         // for a Webflow multi-reference, as nested elements.
@@ -660,19 +732,19 @@
           ? Array.prototype.map.call(techNodes, function (n) {
               return n.textContent.trim();
             }).filter(Boolean)
-          : splitList(d.technologies || d.technology || d.tech);
+          : (d.technologies || d.technology || d.tech);
   
-        stories.push({
-          slug: slug,
-          title: title,
-          type: (d.type || d.category || "").trim(),
+        return {
+          title: d.title || d.name,
+          slug: d.slug,
+          type: d.type || d.category,
           technologies: technologies,
-          location: (d.location || "").trim(),
-          lat: lat,
-          lng: lng,
-          hasLocation: isValidLatLng(lat, lng),
-          summary: (d.summary || d.description || "").trim(),
-          url: (d.url || d.link || "").trim(),
+          location: d.location,
+          lat: d.lat,
+          lng: d.lng,
+          // `blurb` is what the QEA Collection calls the short description.
+          summary: d.summary || d.description || d.blurb,
+          url: d.url || d.link,
           image: readImage(el, "featured"),
           glance: readRich(el, "glance"),
           journey: readRich(el, "journey"),
@@ -680,10 +752,8 @@
           quote: readRich(el, "quote"),
           findOutMore: readRich(el, "find-out-more"),
           exploreMore: readRich(el, "explore-more")
-        });
-      });
-  
-      return stories;
+        };
+      }));
     }
   
     /* ====================== DERIVED FILTER OPTIONS ======================
@@ -863,8 +933,11 @@
       // "sometimes the popup doesn't open" bug this component avoids.
       if (root.__qeaStoriesInstance) return root.__qeaStoriesInstance;
   
+      // In an iframe there is no CMS list in this document — the parent
+      // reads its own Collection and posts the rows in as opts.stories.
       var stories = canonicaliseTags(
-        readStories(opts.listSelector), opts.typeOrder, opts.techOrder
+        opts.stories ? makeStories(opts.stories) : readStories(opts.listSelector),
+        opts.typeOrder, opts.techOrder
       );
       var byId = Object.create(null);
       stories.forEach(function (s) { byId[s.slug] = s; });
@@ -932,6 +1005,7 @@
   
       /* ---------------------------- map ---------------------------- */
       var basemap = BASEMAPS[opts.basemap] || BASEMAPS.light;
+  
       var map = new maplibregl.Map({
         container: mapEl,
         cooperativeGestures: opts.cooperativeGestures,
@@ -939,7 +1013,7 @@
         maxZoom: opts.maxZoom,
         center: opts.center,
         zoom: opts.zoom,
-        style: {
+        style: basemap.style ? basemap.style : {
           version: 8,
           sources: {
             base: {
@@ -956,6 +1030,42 @@
           ]
         }
       });
+      // Repaint a vector basemap in the QEA palette. Driven by layer type
+      // and id rather than a hardcoded list, so a style update that
+      // renames or adds a layer still comes out the right colour instead
+      // of leaving one stripe of somebody else's grey across the map.
+      function recolourBasemap() {
+        var theme = basemap.recolor;
+        if (!theme) return;
+        var layers;
+        try { layers = map.getStyle().layers || []; } catch (e) { return; }
+  
+        layers.forEach(function (layer) {
+          var id = layer.id;
+          var isWater = /water|ocean|sea|river/i.test(id);
+          try {
+            if (layer.type === "background") {
+              map.setPaintProperty(id, "background-color", theme.background);
+            } else if (layer.type === "fill") {
+              map.setPaintProperty(id, "fill-color",
+                isWater ? theme.water : theme.land);
+              map.setPaintProperty(id, "fill-outline-color",
+                isWater ? theme.water : theme.land);
+            } else if (layer.type === "line") {
+              map.setPaintProperty(id, "line-color",
+                isWater ? theme.water : theme.line);
+            } else if (layer.type === "symbol") {
+              map.setPaintProperty(id, "text-color", theme.label);
+              map.setPaintProperty(id, "text-halo-color", theme.halo);
+            }
+          } catch (e) { /* a layer without that property: leave it */ }
+        });
+      }
+  
+      // styledata fires for the initial style and again if it reloads, so
+      // the recolour survives a style swap rather than being a one-shot.
+      map.on("styledata", recolourBasemap);
+  
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
   
       // ONE popup instance for the whole component, reused for every

@@ -19,7 +19,9 @@ shared problem.
 - `index.html` and `embed.html` load them as external files.
 - **`webflow-embed.html` is generated.** Never hand-edit it. Run
   `./gen_embed.sh` after every change; it fails loudly if the export
-  survives the transform.
+  survives the transform. It is now ~55KB, past Webflow's 50,000
+  character Embed limit, so it is kept for reference and for non-Webflow
+  hosts — the site uses the iframe instead.
 - `webflow-iframe-embed.html` is the Webflow side of the iframe embed.
   It is pasted into the site once and should stay stable — think hard
   before changing it, because changing it means someone has to paste.
@@ -116,7 +118,7 @@ npm install playwright
 node tests/browser-test.js
 ```
 
-89 checks. Needs MapLibre reachable; if the CDN is blocked, vendor it
+102 checks. Needs MapLibre reachable; if the CDN is blocked, vendor it
 into `.testvendor/` and generate `test-harness.html` from `index.html`
 (both gitignored). Tile servers being unreachable is fine — the suite is
 designed to pass without a single tile loading.
@@ -125,9 +127,28 @@ Fixtures: `tests/cms-variants.html` (awkward CMS rows — keep it messy,
 it exists to prove the component survives mess) and
 `tests/iframe-parent.html` (the postMessage bridge).
 
+## Palette and basemap
+
+The colours are sampled from the live QEA Local Stories page, not chosen
+— `#1e1e7f` page, `#262784` cards, `#ff527e` accent, `#3c3c90` tech
+pills. Section [13] of the suite asserts them, so a drift fails rather
+than quietly looking wrong on the site. Retune in the first block of
+`stories.css`.
+
+The basemap is a **vector** style (CARTO dark-matter, free, no key)
+recoloured after load, not a raster one. That is deliberate: the design
+has navy land under periwinkle water, and tinting a raster preserves the
+tiles' own light/dark relationship — every dark raster basemap draws
+water darker than land, which is backwards here. `recolourBasemap()`
+works off layer type and id rather than a hardcoded layer list, so a
+CARTO style update doesn't leave a stripe of someone else's grey across
+the map.
+
+This does make the style JSON a network dependency, where previously
+everything was raster tiles that could all fail harmlessly. Section [14]
+covers it: with CARTO blocked, stories still list, select and filter.
+
 ## Still to do
 
-- The palette is a neutral placeholder, not the QEA design. Every colour
-  is a custom property in the first block of `stories.css`.
-- The story content in `index.html` is placeholder copy under real story
-  names. The live site reads from the CMS and ignores it.
+The story content in `index.html` is placeholder copy under real story
+names. The live site reads from the CMS and ignores it.

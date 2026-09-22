@@ -40,7 +40,7 @@
     // Basemap. No API key required — Esri's public raster tiles, the
     // same keyless approach used by the sibling rewiring-nz maps.
     // Swap `basemap` for "satellite" if you'd rather have imagery.
-    basemap: "light",
+    basemap: "qea",
     cooperativeGestures: true,
     // Preferred display order for filter chips. Any value found in the
     // CMS that isn't listed here is appended automatically, so the team
@@ -69,6 +69,24 @@
         "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
       ],
       attribution: "Tiles &copy; Esri"
+    },
+    // The QEA look: navy land, periwinkle water. A tinted raster can't
+    // produce it — tinting preserves the tiles' own light/dark
+    // relationship, and every dark basemap draws water DARKER than land,
+    // which is the opposite of this design. So this one is a vector
+    // style whose layers get recoloured after load. CARTO's basemaps are
+    // free and need no key, in keeping with the rest of the component.
+    qea: {
+      style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+      attribution: "&copy; OpenStreetMap contributors, &copy; CARTO",
+      recolor: {
+        background: "#1e1e7f",
+        land: "#1e1e7f",
+        water: "#a0b4ff",
+        line: "#34349a",
+        label: "#b8bbf1",
+        halo: "#1e1e7f"
+      }
     },
     satellite: {
       tiles: [
@@ -523,6 +541,7 @@
 
     /* ---------------------------- map ---------------------------- */
     var basemap = BASEMAPS[opts.basemap] || BASEMAPS.light;
+
     var map = new maplibregl.Map({
       container: mapEl,
       cooperativeGestures: opts.cooperativeGestures,
@@ -530,7 +549,7 @@
       maxZoom: opts.maxZoom,
       center: opts.center,
       zoom: opts.zoom,
-      style: {
+      style: basemap.style ? basemap.style : {
         version: 8,
         sources: {
           base: {
@@ -547,6 +566,42 @@
         ]
       }
     });
+    // Repaint a vector basemap in the QEA palette. Driven by layer type
+    // and id rather than a hardcoded list, so a style update that
+    // renames or adds a layer still comes out the right colour instead
+    // of leaving one stripe of somebody else's grey across the map.
+    function recolourBasemap() {
+      var theme = basemap.recolor;
+      if (!theme) return;
+      var layers;
+      try { layers = map.getStyle().layers || []; } catch (e) { return; }
+
+      layers.forEach(function (layer) {
+        var id = layer.id;
+        var isWater = /water|ocean|sea|river/i.test(id);
+        try {
+          if (layer.type === "background") {
+            map.setPaintProperty(id, "background-color", theme.background);
+          } else if (layer.type === "fill") {
+            map.setPaintProperty(id, "fill-color",
+              isWater ? theme.water : theme.land);
+            map.setPaintProperty(id, "fill-outline-color",
+              isWater ? theme.water : theme.land);
+          } else if (layer.type === "line") {
+            map.setPaintProperty(id, "line-color",
+              isWater ? theme.water : theme.line);
+          } else if (layer.type === "symbol") {
+            map.setPaintProperty(id, "text-color", theme.label);
+            map.setPaintProperty(id, "text-halo-color", theme.halo);
+          }
+        } catch (e) { /* a layer without that property: leave it */ }
+      });
+    }
+
+    // styledata fires for the initial style and again if it reloads, so
+    // the recolour survives a style swap rather than being a one-shot.
+    map.on("styledata", recolourBasemap);
+
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     // ONE popup instance for the whole component, reused for every

@@ -47,7 +47,7 @@ accessibility, responsive behaviour — is complete and tested.
 | `embed.html` | Bare, iframe-ready page (embedding Option A). |
 | `webflow-embed.html` | **Generated** — CSS + JS inlined for a Webflow Embed (Option B). |
 | `gen_embed.sh` | Regenerates `webflow-embed.html`. Run after every edit. |
-| `tests/browser-test.js` | Playwright suite — 89 checks covering the brief's test list. |
+| `tests/browser-test.js` | Playwright suite — 102 checks covering the brief's test list. |
 | `tests/cms-variants.html` | Fixture of the awkward rows the live Collection really contains. |
 | `webflow-iframe-embed.html` | The Webflow side of Option C — pasted once, then left alone. |
 | `tests/iframe-parent.html` | Fixture for the postMessage bridge. |
@@ -165,7 +165,11 @@ attraction. The catch is that the CMS data has to live inside the iframe,
 so this suits a copy of the data or a separate CMS-bound page rather than
 a Collection List on the parent page.
 
-### Option B — paste into the page (recommended for Webflow)
+### Option B — paste into the page ⚠️ over the Embed limit
+
+> **This no longer fits.** `webflow-embed.html` is ~55,000 characters
+> and Webflow's Embed element caps at 50,000. Webflow truncates rather
+> than refusing, which fails in confusing ways. Use Option C.
 
 1. Add the hidden Collection List described above.
 2. Add an **Embed** element and paste the entire contents of
@@ -378,7 +382,7 @@ The suite drives a real Chromium browser. It needs MapLibre reachable —
 either from the CDN, or vendored locally as `.testvendor/` (see the top of
 the test file).
 
-### Results — 89 checks, all passing
+### Results — 102 checks, all passing
 
 | Area | Checks |
 |---|---|
@@ -395,6 +399,8 @@ the test file).
 | Real-CMS quirks | `data-tech` read, case variants folded to one chip, filters catch every spelling, duplicate tag in a row renders once, transposed lat/lng recovered, blank coordinates still mean no marker |
 | Host-driven sizing | fills a tall container, floor applies to a short one, `--qea-min-height: 0` releases it, canvas re-measures on resize, mobile grows instead of cramping the list |
 | Iframe bridge | rows cross the bridge, rich text pairs with the right story, props arrive, canonicalisation and coordinate recovery still run, selection posts back to the parent |
+| Palette | page, card, chip, pill, title, summary and marker colours match the values sampled from the live QEA page |
+| Basemap failure | with the vector style blocked, stories still list, select and filter |
 
 Four genuine bugs were found and fixed during testing — the first two by
 the suite, the second two by looking at screenshots of the rendered

@@ -9,7 +9,9 @@
 <style>
   /* The iframe is the container, so the component fills it exactly.
      Size the <iframe> in Webflow and this page follows. */
-  html, body { height: 100%; margin: 0; padding: 0; background: #fff; }
+  /* Matches the component's own page colour so the iframe has no seam
+     against the QEA page behind it. */
+  html, body { height: 100%; margin: 0; padding: 0; background: #1e1e7f; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
@@ -18,7 +20,7 @@
   .qea-waiting {
     display: none;
     font: 14px/1.5 inherit;
-    color: #666;
+    color: #9698dd;
     padding: 24px;
   }
   .qea-waiting.is-shown { display: block; }

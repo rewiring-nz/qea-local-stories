@@ -5,16 +5,21 @@
    rule further down hardcodes a brand colour. */
 
 .qea-root {
-  /* --- brand palette (retune these) --- */
-  --qea-ink: #12302b;
-  --qea-ink-soft: #4a5f5a;
-  --qea-accent: #1d6b5a;
-  --qea-accent-dark: #12503f;
-  --qea-accent-tint: #e7f2ee;
-  --qea-surface: #ffffff;
-  --qea-surface-alt: #f5f7f6;
-  --qea-border: #dfe5e3;
-  --qea-focus: #b8541f;
+  /* --- brand palette ---
+     Sampled from the QEA Local Stories page so the component sits on
+     that page without a seam. Retune here; nothing below hardcodes a
+     brand colour. */
+  --qea-page: #1e1e7f;        /* page behind the component */
+  --qea-ink: #ffffff;         /* titles */
+  --qea-ink-soft: #9698dd;    /* body copy, labels, counts */
+  --qea-accent: #ff527e;      /* markers, active chip, type pill, CTA */
+  --qea-accent-dark: #eaecff; /* text on the tinted surface, links */
+  --qea-accent-tint: #3c3c90; /* technology pill, selected card */
+  --qea-surface: #262784;     /* cards, popup */
+  --qea-surface-alt: #2f2e8a; /* map backdrop, popup sections */
+  --qea-chip: #2f2e8a;        /* unselected filter chip */
+  --qea-border: #343593;
+  --qea-focus: #a0b4ff;       /* also the water colour on the basemap */
 
   /* --- type --- */
   --qea-font: inherit;
@@ -51,6 +56,7 @@
   min-height: var(--qea-min-height);
   display: flex;
   flex-direction: column;
+  background: var(--qea-page);
 }
 .qea-root *,
 .qea-root *::before,
@@ -84,6 +90,8 @@
 }
 
 .qea-map { width: 100%; height: 100%; }
+
+
 
 .qea-listcol {
   flex: 1 1 auto;
@@ -125,13 +133,13 @@
   font: inherit;
   font-size: var(--qea-size-small);
   padding: 5px 12px;
-  border: 1px solid var(--qea-border);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: var(--qea-surface);
-  color: var(--qea-ink-soft);
+  background: var(--qea-chip);
+  color: #e4e7ff;
   cursor: pointer;
 }
-.qea-chip:hover { border-color: var(--qea-accent); color: var(--qea-accent); }
+.qea-chip:hover { border-color: var(--qea-accent); }
 
 /* Selected filter carries weight + fill, not colour alone. */
 .qea-chip[aria-pressed="true"] {

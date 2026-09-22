@@ -33,6 +33,7 @@
     --qea-surface-alt: #2f2e8a; /* map backdrop, popup sections */
     --qea-chip: #2f2e8a;        /* unselected filter chip */
     --qea-border: #343593;
+    --qea-divider: #4446ad;      /* map / sidebar split, and rule lines */
     --qea-label: #b8bbf1;       /* EXPLORE / TYPE / TECHNOLOGY */
     --qea-popup: #2b2bad;       /* popup panel, brighter than the cards */
     --qea-scrim: rgba(10, 10, 60, 0.55);
@@ -60,7 +61,7 @@
        declares a height — `height: 100%` resolves to `auto` there, which
        would otherwise collapse the map to nothing. Set it to 0 if you
        want a short container to win outright. */
-    --qea-map-width: 62%;
+    --qea-map-width: 70%;
     --qea-min-height: 560px;
     --qea-map-height-mobile: 340px;
   
@@ -121,6 +122,7 @@
     flex-direction: column;
     min-height: 0;
     padding: var(--qea-pad) var(--qea-pad) 0;
+    border-left: 1px solid var(--qea-divider);
   }
   
   /* ============================ filters ============================= */
@@ -131,7 +133,7 @@
     gap: 10px;
     padding-bottom: 18px;
     margin-bottom: 18px;
-    border-bottom: 1px solid var(--qea-border);
+    border-bottom: 1px solid var(--qea-divider);
   }
   
   .qea-filters__row { display: flex; flex-direction: column; gap: 7px; }
@@ -490,7 +492,11 @@
       overflow: visible;
     }
   
-    .qea-listcol { padding: var(--qea-pad-mobile) var(--qea-pad-mobile) 0; }
+    .qea-listcol {
+      padding: var(--qea-pad-mobile) var(--qea-pad-mobile) 0;
+      border-left: 0;
+      border-top: 1px solid var(--qea-divider);
+    }
   
     .qea-mapcol {
       /* The map takes a fixed slice off the top and the list takes the

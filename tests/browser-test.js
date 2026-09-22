@@ -342,7 +342,7 @@ async function newPage(browser, url) {
     return { sideBySide: Math.abs(m.top - l.top) < 5 && l.left > m.left, mapRatio: m.width / (m.width + l.width) };
   });
   check('desktop: map and list side by side', desktop.sideBySide);
-  check('desktop: map ~60-65% width', desktop.mapRatio > 0.55 && desktop.mapRatio < 0.70, `${(desktop.mapRatio*100).toFixed(1)}%`);
+  check('desktop: map ~70% width', desktop.mapRatio > 0.66 && desktop.mapRatio < 0.74, `${(desktop.mapRatio*100).toFixed(1)}%`);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(500);

@@ -47,7 +47,7 @@ accessibility, responsive behaviour — is complete and tested.
 | `embed.html` | Bare, iframe-ready page (embedding Option A). |
 | `webflow-embed.html` | **Generated** — CSS + JS inlined for a Webflow Embed (Option B). |
 | `gen_embed.sh` | Regenerates `webflow-embed.html`. Run after every edit. |
-| `tests/browser-test.js` | Playwright suite — 102 checks covering the brief's test list. |
+| `tests/browser-test.js` | Playwright suite — 104 checks covering the brief's test list. |
 | `tests/cms-variants.html` | Fixture of the awkward rows the live Collection really contains. |
 | `webflow-iframe-embed.html` | The Webflow side of Option C — pasted once, then left alone. |
 | `tests/iframe-parent.html` | Fixture for the postMessage bridge. |
@@ -382,7 +382,7 @@ The suite drives a real Chromium browser. It needs MapLibre reachable —
 either from the CDN, or vendored locally as `.testvendor/` (see the top of
 the test file).
 
-### Results — 102 checks, all passing
+### Results — 104 checks, all passing
 
 | Area | Checks |
 |---|---|

@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>html,body{margin:0;height:100%}#wrap{width:100%;height:700px}iframe{width:100%;height:100%;border:0;display:block}</style>
+</head><body>
+<!-- Reproduces the Webflow race: the first send happens before the
+     Collection is in the DOM, so it carries no rows. The component must
+     wait for a real payload rather than locking itself to zero stories. -->
+<div id="wrap"><iframe id="f" src="../embed.html"></iframe></div>
+<script>
+var REAL = [
+  {name:'Sasha in Alexandra',slug:'sasha-in-alexandra',type:'Household',technologies:'Solar',
+   lat:'-45.249581',lng:'169.38242',summary:'A test row.'},
+  {name:'Ziptrek',slug:'ziptrek',type:'Business',technologies:'Solar, EV',
+   lat:'-45.030374',lng:'168.66038',summary:'Another test row.'}
+];
+var f=document.getElementById('f');
+window.__debug=[];
+window.addEventListener('message',function(e){
+  if(e.data&&e.data.type==='qea:debug') window.__debug.push(e.data);
+  if(e.data&&e.data.type==='qea:ready'){
+    f.contentWindow.postMessage({type:'qea:data',stories:[]}, window.location.origin);
+    setTimeout(function(){
+      f.contentWindow.postMessage({type:'qea:data',stories:REAL}, window.location.origin);
+    }, 900);
+  }
+});
+</script></body></html>

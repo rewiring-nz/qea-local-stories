@@ -77,6 +77,12 @@
 
   function start(stories) {
     if (started) return;
+    // An empty payload means the parent asked before Webflow had put the
+    // Collection in the DOM. Starting on it would lock the component to
+    // zero stories for the life of the page, because the double-init
+    // guard makes the first call the only one that counts. Wait for a
+    // payload with something in it instead.
+    if (!stories.length) return;
     started = true;
     clearTimeout(noDataTimer);
     waiting.classList.remove("is-shown");
@@ -105,6 +111,16 @@
     var d = ev.data;
     if (!d || d.type !== "qea:data" || !Array.isArray(d.stories)) return;
     start(d.stories);
+    // Report what actually happened, so the state of an embedded map can
+    // be checked from the parent page without cross-origin access.
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: "qea:debug",
+        received: d.stories.length,
+        started: started,
+        cards: document.querySelectorAll(".qea-card").length
+      }, "*");
+    }
   });
 
   // Tell the parent we're ready, in case it loaded before we did and

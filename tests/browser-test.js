@@ -660,6 +660,27 @@ async function newPage(browser, url) {
   check('no uncaught JS errors without a basemap', berrors.length === 0,
     berrors.slice(0, 3).join(' | '));
 
+  // ---------------------------------------------------------------
+  // Webflow sends before its Collection is in the DOM, so the first
+  // payload can be empty. Starting on it would lock the map to zero
+  // stories for the life of the page — the double-init guard makes the
+  // first call the only one that counts.
+  console.log('\n[15] Empty first payload');
+  const epage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await epage.goto(BASE.replace(/[^/]*$/, '') + 'tests/empty-first-parent.html',
+    { waitUntil: 'load' });
+  let recovered = true;
+  try {
+    await epage.frameLocator('#f').locator('.qea-card').first().waitFor({ timeout: 15000 });
+  } catch (e) { recovered = false; }
+  check('an empty first payload does not lock the map out', recovered);
+  if (recovered) {
+    const fr = epage.frames().find(f => f.url().includes('embed.html'));
+    const n = await fr.evaluate(() =>
+      document.querySelector('#qea-stories-map').__qeaStoriesInstance.stories.length);
+    check('the later, real payload is the one that starts it', n === 2, `${n} stories`);
+  }
+
   await browser.close();
   console.log(`\n================  ${pass} passed, ${fail} failed  ================`);
   if (failures.length) { console.log('Failures:'); failures.forEach(f => console.log('  - ' + f)); }

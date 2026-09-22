@@ -120,8 +120,23 @@
     }
   });
 
+  // Webflow renders the Collection List into the page, but a code
+  // component inside it hydrates later, and the rich text only exists
+  // once it has. Keep offering the data until the rows are actually
+  // there — the iframe ignores an empty payload, so an early send costs
+  // nothing, and it stops once something has been delivered.
+  var tries = 0;
+  function pump() {
+    send();
+    tries++;
+    if (tries < 12 && !document.querySelectorAll('[slot="glance"]').length) {
+      setTimeout(pump, 500);
+    }
+  }
+
   if (FRAME) {
-    FRAME.addEventListener("load", function () { send(); setTimeout(send, 1200); });
+    FRAME.addEventListener("load", pump);
+    if (document.readyState === "complete") pump();
   }
 })();
 </script>

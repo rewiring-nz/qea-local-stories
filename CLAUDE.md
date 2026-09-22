@@ -118,14 +118,23 @@ npm install playwright
 node tests/browser-test.js
 ```
 
-102 checks. Needs MapLibre reachable; if the CDN is blocked, vendor it
+104 checks. Needs MapLibre reachable; if the CDN is blocked, vendor it
 into `.testvendor/` and generate `test-harness.html` from `index.html`
 (both gitignored). Tile servers being unreachable is fine — the suite is
 designed to pass without a single tile loading.
 
 Fixtures: `tests/cms-variants.html` (awkward CMS rows — keep it messy,
-it exists to prove the component survives mess) and
-`tests/iframe-parent.html` (the postMessage bridge).
+it exists to prove the component survives mess), `tests/iframe-parent.html`
+(the postMessage bridge) and `tests/empty-first-parent.html` (the race
+below).
+
+**The first payload can be empty.** Webflow's Collection List is in the
+page before its code component hydrates, so the bridge's first send may
+carry no rows. `start()` ignores an empty payload — starting on it would
+lock the map to zero stories for the life of the page, because the
+double-init guard makes the first call the only one that counts. The
+bridge keeps offering the data until the rows appear. Don't "simplify"
+either half of that; it is the failure that shipped once already.
 
 ## Palette and basemap
 

@@ -33,6 +33,9 @@
     --qea-surface-alt: #2f2e8a; /* map backdrop, popup sections */
     --qea-chip: #2f2e8a;        /* unselected filter chip */
     --qea-border: #343593;
+    --qea-label: #b8bbf1;       /* EXPLORE / TYPE / TECHNOLOGY */
+    --qea-popup: #2b2bad;       /* popup panel, brighter than the cards */
+    --qea-scrim: rgba(10, 10, 60, 0.55);
     --qea-focus: #a0b4ff;       /* also the water colour on the basemap */
   
     /* --- type --- */
@@ -134,7 +137,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--qea-ink-soft);
+    color: var(--qea-label);
   }
   
   .qea-filters__group {
@@ -163,10 +166,29 @@
     font-weight: 600;
   }
   
+  /* "EXPLORE / 31 of 31 stories" — the count of what the filters leave
+     in view, against the size of the whole collection. */
   .qea-count {
-    font-size: var(--qea-size-small);
+    margin: 0 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .qea-count__label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--qea-label);
+  }
+  .qea-count__value {
+    font-size: 26px;
+    line-height: 1.15;
     color: var(--qea-ink-soft);
-    margin: 10px 0 8px;
+  }
+  .qea-count__value strong {
+    font-weight: 700;
+    color: var(--qea-ink);
   }
   
   /* ========================== the story list ======================== */
@@ -312,11 +334,12 @@
   
   .qea-popup .maplibregl-popup-content {
     padding: 0;
-    border-radius: var(--qea-radius);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
     overflow: hidden;
+    background: var(--qea-popup);
   }
-  .qea-popup .maplibregl-popup-tip { border-top-color: var(--qea-surface); }
+  .qea-popup .maplibregl-popup-tip { border-top-color: var(--qea-popup); }
   
   .qea-popup__inner { position: relative; outline: none; }
   .qea-popup__inner:focus-visible { outline: 3px solid var(--qea-focus); }
@@ -340,54 +363,65 @@
     line-height: 1;
     border: 0;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
-    color: var(--qea-ink);
+    /* Dark disc on the hero image, where a white one disappeared against
+       a bright photo. */
+    background: rgba(12, 12, 48, 0.62);
+    color: #fff;
     cursor: pointer;
   }
-  .qea-popup__close:hover { background: #fff; }
+  .qea-popup__close:hover { background: rgba(12, 12, 48, 0.85); }
   
   .qea-popup__img {
     display: block;
     width: 100%;
-    height: 150px;
+    height: 190px;
     object-fit: cover;
     background: var(--qea-surface-alt);
   }
   
-  .qea-popup__body { padding: 14px 16px 16px; }
+  .qea-popup__body { padding: 18px 20px 22px; }
+  
+  /* The popup is the focus while it is open, so the rest is dimmed — the
+     same treatment as the old map. */
+  .qea-root.has-popup .qea-listcol { opacity: 0.45; transition: opacity 0.15s; }
   
   .qea-popup__title {
     margin: 0 0 2px;
-    font-size: 17px;
+    font-size: 22px;
     font-weight: 700;
+    color: var(--qea-ink);
   }
   
   .qea-popup__summary {
-    margin: 8px 0 0;
-    font-size: var(--qea-size-small);
-    color: var(--qea-ink-soft);
+    margin: 10px 0 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #ccd0f5;
   }
   
   .qea-detail__section {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid var(--qea-border);
+    margin-top: 18px;
+    padding-top: 0;
+    border-top: 0;
   }
   
   .qea-detail__heading {
     margin: 0 0 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--qea-accent-dark);
+    letter-spacing: 0.08em;
+    color: var(--qea-accent);
   }
   
   .qea-detail__rich {
-    font-size: var(--qea-size-small);
-    color: var(--qea-ink);
+    font-size: 15px;
+    line-height: 1.6;
+    color: #eef0ff;
   }
-  .qea-detail__rich p { margin: 0 0 8px; }
+  .qea-detail__rich p { margin: 0 0 10px; }
+  .qea-detail__rich ul, .qea-detail__rich ol { margin: 0 0 10px; padding-left: 20px; }
+  .qea-detail__rich li { margin: 0 0 6px; }
   .qea-detail__rich p:last-child { margin-bottom: 0; }
   .qea-detail__rich img { max-width: 100%; height: auto; border-radius: 4px; }
   .qea-detail__rich a { color: var(--qea-accent-dark); }
@@ -966,6 +1000,7 @@
         '<div class="qea-layout">' +
           '<div class="qea-mapcol"><div class="qea-map"></div></div>' +
           '<aside class="qea-listcol" aria-label="Local stories">' +
+            '<p class="qea-count" role="status" aria-live="polite"></p>' +
             '<div class="qea-filters">' +
               '<div class="qea-filters__row">' +
                 '<span class="qea-filters__label" aria-hidden="true">Type</span>' +
@@ -976,7 +1011,6 @@
                 '<div class="qea-filters__group" data-group="tech" role="group" aria-label="Filter by technology"></div>' +
               "</div>" +
             "</div>" +
-            '<p class="qea-count" role="status" aria-live="polite"></p>' +
             '<ul class="qea-list"></ul>' +
             '<p class="qea-empty" hidden>No stories match these filters.</p>' +
           "</aside>" +
@@ -1201,8 +1235,17 @@
         listEl.appendChild(frag);
   
         emptyEl.hidden = visible.length !== 0;
-        countEl.textContent =
-          visible.length + (visible.length === 1 ? " story" : " stories");
+        // "31 of 31 stories" — the first number is what the current
+        // filters leave in view, the second is the whole collection, so a
+        // visitor can see at a glance how much they have narrowed it.
+        countEl.innerHTML =
+          '<span class="qea-count__label">Explore</span>' +
+          '<span class="qea-count__value">' +
+            '<strong>' + visible.length + '</strong> of ' + stories.length +
+            (stories.length === 1 ? " story" : " stories") +
+          "</span>";
+  
+        root.classList.toggle("has-popup", !!state.selectedId);
   
         // --- markers ---
         stories.forEach(function (s) {

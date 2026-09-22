@@ -502,6 +502,7 @@
       '<div class="qea-layout">' +
         '<div class="qea-mapcol"><div class="qea-map"></div></div>' +
         '<aside class="qea-listcol" aria-label="Local stories">' +
+          '<p class="qea-count" role="status" aria-live="polite"></p>' +
           '<div class="qea-filters">' +
             '<div class="qea-filters__row">' +
               '<span class="qea-filters__label" aria-hidden="true">Type</span>' +
@@ -512,7 +513,6 @@
               '<div class="qea-filters__group" data-group="tech" role="group" aria-label="Filter by technology"></div>' +
             "</div>" +
           "</div>" +
-          '<p class="qea-count" role="status" aria-live="polite"></p>' +
           '<ul class="qea-list"></ul>' +
           '<p class="qea-empty" hidden>No stories match these filters.</p>' +
         "</aside>" +
@@ -737,8 +737,17 @@
       listEl.appendChild(frag);
 
       emptyEl.hidden = visible.length !== 0;
-      countEl.textContent =
-        visible.length + (visible.length === 1 ? " story" : " stories");
+      // "31 of 31 stories" — the first number is what the current
+      // filters leave in view, the second is the whole collection, so a
+      // visitor can see at a glance how much they have narrowed it.
+      countEl.innerHTML =
+        '<span class="qea-count__label">Explore</span>' +
+        '<span class="qea-count__value">' +
+          '<strong>' + visible.length + '</strong> of ' + stories.length +
+          (stories.length === 1 ? " story" : " stories") +
+        "</span>";
+
+      root.classList.toggle("has-popup", !!state.selectedId);
 
       // --- markers ---
       stories.forEach(function (s) {

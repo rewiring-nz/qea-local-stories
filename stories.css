@@ -32,6 +32,10 @@
   /* --- shape & rhythm --- */
   --qea-radius: 8px;
   --qea-gap: 20px;
+  /* Breathing room inside the story column. The map stays edge to edge,
+     as on the QEA page; it is the panel beside it that needs the room. */
+  --qea-pad: 28px;
+  --qea-pad-mobile: 18px;
 
   /* --- layout ---
      The component fills whatever box it is given: set the height on the
@@ -70,7 +74,7 @@
 .qea-layout {
   display: flex;
   align-items: stretch;
-  gap: var(--qea-gap);
+  gap: 0;
   width: 100%;
   /* Takes the root's full height. min-height:0 lets the flex children
      shrink below their content, which is what allows the list to scroll
@@ -102,6 +106,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding: var(--qea-pad) var(--qea-pad) 0;
 }
 
 /* ============================ filters ============================= */
@@ -110,7 +115,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-bottom: 12px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
   border-bottom: 1px solid var(--qea-border);
 }
 
@@ -196,7 +202,8 @@
      dragging the whole page. */
   -webkit-overflow-scrolling: touch;
 }
-.qea-list > li { margin: 0 0 10px; }
+.qea-list > li { margin: 0 0 12px; }
+.qea-list > li:last-child { margin-bottom: var(--qea-pad); }
 
 .qea-card {
   display: block;
@@ -341,6 +348,11 @@
 .qea-popup .maplibregl-popup-tip { border-top-color: var(--qea-popup); }
 
 .qea-popup__inner { position: relative; outline: none; }
+
+/* The popup is sized in JS, but it must never be wider than the map
+   that clips it — on a narrow map the fixed width would hang off both
+   sides. */
+.qea-popup .maplibregl-popup-content { max-width: 100%; }
 .qea-popup__inner:focus-visible { outline: 3px solid var(--qea-focus); }
 
 /* Sized against the map container, not the viewport — see the
@@ -373,23 +385,28 @@
 .qea-popup__img {
   display: block;
   width: 100%;
-  height: 190px;
+  height: 240px;
   object-fit: cover;
   background: var(--qea-surface-alt);
 }
 
-.qea-popup__body { padding: 18px 20px 22px; }
+.qea-popup__body { padding: 22px 24px 26px; }
+.qea-popup__body .qea-card__pills { gap: 6px; margin-bottom: 4px; }
 
 /* The popup is the focus while it is open, so the rest is dimmed — the
    same treatment as the old map. */
 .qea-root.has-popup .qea-listcol { opacity: 0.55; transition: opacity 0.15s; }
 
 .qea-popup__title {
-  margin: 0 0 2px;
-  font-size: 22px;
+  margin: 0 0 12px;
+  font-size: 24px;
   font-weight: 700;
+  line-height: 1.2;
   color: var(--qea-ink);
 }
+/* When there is a location line it sits between the two, so the title's
+   own gap would double up. */
+.qea-popup__title + .qea-popup__loc { margin-top: -6px; }
 
 .qea-popup__summary {
   margin: 10px 0 0;
@@ -455,9 +472,11 @@
 
   .qea-layout {
     flex-direction: column;
-    gap: 16px;
+    gap: 0;
     overflow: visible;
   }
+
+  .qea-listcol { padding: var(--qea-pad-mobile) var(--qea-pad-mobile) 0; }
 
   .qea-mapcol {
     /* The map takes a fixed slice off the top and the list takes the

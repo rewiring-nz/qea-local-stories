@@ -49,6 +49,8 @@
     // QEA Local Stories page uses; the plural forms are kept so a
     // Collection that names the option "Households" still sorts sensibly
     // instead of falling through to the alphabetical tail.
+    popupWidth: "600px",
+
     // Supply rows directly instead of reading them from this document's
     // DOM. Used by embed.html, which receives them from the parent page.
     stories: null,
@@ -602,7 +604,9 @@
     // the recolour survives a style swap rather than being a one-shot.
     map.on("styledata", recolourBasemap);
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    // Bottom-right, as on the QEA page — and out of the way of the
+    // popup, which opens above its marker.
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
 
     // ONE popup instance for the whole component, reused for every
     // story. Per-marker popups are how stale references creep in; with
@@ -613,7 +617,9 @@
       closeButton: false,
       closeOnClick: false,
       focusAfterOpen: false,
-      maxWidth: "340px",
+      // Wide enough for the rich text to breathe. popupMaxWidth() keeps
+      // it inside the map when the map is narrower than this.
+      maxWidth: opts.popupWidth,
       className: "qea-popup",
       // Fixed anchor rather than MapLibre's automatic choice: the camera
       // is positioned below to guarantee clearance, which only works if

@@ -224,7 +224,8 @@ Pass options to `initQeaStoriesMap({...})`, or set
 | `mapSelector` | `#qea-stories-map` | Element the component renders into |
 | `center` / `zoom` | `[168.6626, -45.0312]`, `9.2` | Initial view |
 | `selectedZoom` | `13` | Zoom when flying to a story |
-| `basemap` | `"light"` | Or `"satellite"` |
+| `basemap` | `"qea"` | Recoloured vector style. Or `"light"` / `"satellite"` (Esri raster) |
+| `popupWidth` | `"600px"` | Capped to the map's width on a narrow map |
 | `fitToStories` | `true` | Fit bounds to all stories on load |
 | `urlParam` | `"story"` | Deep-link query parameter |
 | `syncUrl` | `true` | Set `false` to leave the address bar alone |

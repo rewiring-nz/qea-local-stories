@@ -682,9 +682,9 @@ async function newPage(browser, url) {
   }
 
   // ---------------------------------------------------------------
-  // The sidebar is 22% of a wide screen but never narrower than its
-  // floor — at 22% a small screen would give the cards less width than
-  // their own images.
+  // The sidebar is 26% of a wide screen but never narrower than its
+  // floor — a flat percentage on a small screen would give the cards
+  // less width than their own images.
   console.log('\n[16] Sidebar width');
   const wpage = await newPage(browser, BASE);
   const measure = () => wpage.evaluate(() => {
@@ -700,15 +700,15 @@ async function newPage(browser, url) {
   await wpage.evaluate(() => { document.querySelector('.page').style.maxWidth = 'none'; });
   await wpage.waitForTimeout(500);
   const wide = await measure();
-  check('wide screen: sidebar settles at ~22%', wide.pct > 21 && wide.pct < 23.5,
+  check('wide screen: sidebar settles at ~26%', wide.pct > 25 && wide.pct < 27.5,
     `${wide.pct}% of ${wide.root}px`);
 
   await wpage.setViewportSize({ width: 1000, height: 900 });
   await wpage.waitForTimeout(500);
   const narrow = await measure();
-  check('narrow screen: sidebar expands past 22%', narrow.pct > 23,
+  check('narrow screen: sidebar expands past 26%', narrow.pct > 27,
     `${narrow.pct}% of ${narrow.root}px`);
-  check('narrow screen: sidebar never drops below its floor', narrow.list >= 299,
+  check('narrow screen: sidebar never drops below its floor', narrow.list >= 319,
     `${narrow.list}px`);
   check('the map still keeps the larger share', narrow.pct < 45, `${narrow.pct}%`);
 

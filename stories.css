@@ -48,13 +48,13 @@
      would otherwise collapse the map to nothing. Set it to 0 if you
      want a short container to win outright. */
   /* The story column is the sized one and the map takes what's left.
-     22% of a wide screen, but never below --qea-sidebar-min — at 22% a
-     1024px screen would give the cards about 225px, which is narrower
-     than their own images. The max() means the sidebar holds its
-     proportion on a large monitor and quietly claims a bigger share as
-     the screen shrinks, with no breakpoint to maintain. */
-  --qea-sidebar: max(22%, var(--qea-sidebar-min));
-  --qea-sidebar-min: 300px;
+     26% of a wide screen, but never below --qea-sidebar-min — a flat
+     percentage on a small screen would give the cards less width than
+     their own images. The max() means the sidebar holds its proportion
+     on a large monitor and quietly claims a bigger share as the screen
+     shrinks, with no breakpoint to maintain. */
+  --qea-sidebar: max(26%, var(--qea-sidebar-min));
+  --qea-sidebar-min: 320px;
   --qea-min-height: 560px;
   --qea-map-height-mobile: 340px;
 

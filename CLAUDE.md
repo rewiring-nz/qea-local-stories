@@ -99,9 +99,10 @@ ancestor declares a height, since `height: 100%` resolves to `auto`
 there and would collapse the map to nothing.
 
 The story column is the sized one and the map takes what is left:
-`--qea-sidebar: max(22%, var(--qea-sidebar-min))`. The percentage holds
+`--qea-sidebar: max(26%, var(--qea-sidebar-min))`. The percentage holds
 on a large monitor; the floor takes over as the screen shrinks, because
-22% of a small screen gives the cards less width than their own images.
+a flat percentage on a small screen gives the cards less width than
+their own images.
 One expression, no breakpoint to keep in sync — don't replace it with
 media queries.
 

@@ -114,11 +114,10 @@
   border-bottom: 1px solid var(--qea-border);
 }
 
-.qea-filters__row { display: flex; align-items: baseline; gap: 10px; }
+.qea-filters__row { display: flex; flex-direction: column; gap: 7px; }
 
 .qea-filters__label {
   flex: 0 0 auto;
-  width: 76px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -300,11 +299,25 @@
   height: 20px;
   margin: 0 auto;
   background: var(--qea-accent);
-  border: 2.5px solid #fff;
+  border: 0;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  position: relative;
 }
+/* The white centre, as on the old map. */
+.qea-marker__pin::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: #fff;
+}
+.qea-marker.is-selected .qea-marker__pin::after { width: 10px; height: 10px; margin: -5px 0 0 -5px; }
 
 /* Selected marker changes SIZE as well as colour, so the cue survives
    greyscale. */
@@ -312,7 +325,7 @@
 .qea-marker.is-selected .qea-marker__pin {
   width: 28px;
   height: 28px;
-  background: var(--qea-focus);
+  background: var(--qea-accent);
   border-width: 3px;
 }
 
@@ -369,7 +382,7 @@
 
 /* The popup is the focus while it is open, so the rest is dimmed — the
    same treatment as the old map. */
-.qea-root.has-popup .qea-listcol { opacity: 0.45; transition: opacity 0.15s; }
+.qea-root.has-popup .qea-listcol { opacity: 0.55; transition: opacity 0.15s; }
 
 .qea-popup__title {
   margin: 0 0 2px;

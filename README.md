@@ -47,7 +47,7 @@ accessibility, responsive behaviour — is complete and tested.
 | `embed.html` | Bare, iframe-ready page (embedding Option A). |
 | `webflow-embed.html` | **Generated** — CSS + JS inlined for a Webflow Embed (Option B). |
 | `gen_embed.sh` | Regenerates `webflow-embed.html`. Run after every edit. |
-| `tests/browser-test.js` | Playwright suite — 104 checks covering the brief's test list. |
+| `tests/browser-test.js` | Playwright suite — 108 checks covering the brief's test list. |
 | `tests/cms-variants.html` | Fixture of the awkward rows the live Collection really contains. |
 | `webflow-iframe-embed.html` | The Webflow side of Option C — pasted once, then left alone. |
 | `tests/iframe-parent.html` | Fixture for the postMessage bridge. |
@@ -225,7 +225,7 @@ Pass options to `initQeaStoriesMap({...})`, or set
 | `center` / `zoom` | `[168.6626, -45.0312]`, `9.2` | Initial view |
 | `selectedZoom` | `13` | Zoom when flying to a story |
 | `basemap` | `"qea"` | Recoloured vector style. Or `"light"` / `"satellite"` (Esri raster) |
-| `popupWidth` | `"600px"` | Capped to the map's width on a narrow map |
+| `popupWidth` | `"480px"` | Capped to the map's width on a narrow map |
 | `fitToStories` | `true` | Fit bounds to all stories on load |
 | `urlParam` | `"story"` | Deep-link query parameter |
 | `syncUrl` | `true` | Set `false` to leave the address bar alone |
@@ -383,7 +383,7 @@ The suite drives a real Chromium browser. It needs MapLibre reachable —
 either from the CDN, or vendored locally as `.testvendor/` (see the top of
 the test file).
 
-### Results — 104 checks, all passing
+### Results — 108 checks, all passing
 
 | Area | Checks |
 |---|---|

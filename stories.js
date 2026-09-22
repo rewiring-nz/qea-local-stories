@@ -49,7 +49,7 @@
     // QEA Local Stories page uses; the plural forms are kept so a
     // Collection that names the option "Households" still sorts sensibly
     // instead of falling through to the alphabetical tail.
-    popupWidth: "600px",
+    popupWidth: "480px",
 
     // Supply rows directly instead of reading them from this document's
     // DOM. Used by embed.html, which receives them from the parent page.

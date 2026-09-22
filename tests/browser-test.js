@@ -342,7 +342,7 @@ async function newPage(browser, url) {
     return { sideBySide: Math.abs(m.top - l.top) < 5 && l.left > m.left, mapRatio: m.width / (m.width + l.width) };
   });
   check('desktop: map and list side by side', desktop.sideBySide);
-  check('desktop: map ~70% width', desktop.mapRatio > 0.66 && desktop.mapRatio < 0.74, `${(desktop.mapRatio*100).toFixed(1)}%`);
+  check('desktop: map takes the larger share', desktop.mapRatio > 0.66 && desktop.mapRatio < 0.80, `${(desktop.mapRatio*100).toFixed(1)}%`);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(500);
@@ -680,6 +680,37 @@ async function newPage(browser, url) {
       document.querySelector('#qea-stories-map').__qeaStoriesInstance.stories.length);
     check('the later, real payload is the one that starts it', n === 2, `${n} stories`);
   }
+
+  // ---------------------------------------------------------------
+  // The sidebar is 22% of a wide screen but never narrower than its
+  // floor — at 22% a small screen would give the cards less width than
+  // their own images.
+  console.log('\n[16] Sidebar width');
+  const wpage = await newPage(browser, BASE);
+  const measure = () => wpage.evaluate(() => {
+    const r = document.querySelector('.qea-root').getBoundingClientRect();
+    const l = document.querySelector('.qea-listcol').getBoundingClientRect();
+    return { root: Math.round(r.width), list: Math.round(l.width),
+      pct: +(l.width / r.width * 100).toFixed(1) };
+  });
+
+  // Release the harness's own max-width so the component can get wide
+  // enough for the percentage to beat the floor.
+  await wpage.setViewportSize({ width: 1900, height: 900 });
+  await wpage.evaluate(() => { document.querySelector('.page').style.maxWidth = 'none'; });
+  await wpage.waitForTimeout(500);
+  const wide = await measure();
+  check('wide screen: sidebar settles at ~22%', wide.pct > 21 && wide.pct < 23.5,
+    `${wide.pct}% of ${wide.root}px`);
+
+  await wpage.setViewportSize({ width: 1000, height: 900 });
+  await wpage.waitForTimeout(500);
+  const narrow = await measure();
+  check('narrow screen: sidebar expands past 22%', narrow.pct > 23,
+    `${narrow.pct}% of ${narrow.root}px`);
+  check('narrow screen: sidebar never drops below its floor', narrow.list >= 299,
+    `${narrow.list}px`);
+  check('the map still keeps the larger share', narrow.pct < 45, `${narrow.pct}%`);
 
   await browser.close();
   console.log(`\n================  ${pass} passed, ${fail} failed  ================`);
